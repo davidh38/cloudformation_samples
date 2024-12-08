@@ -1,0 +1,46 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: CloudFormation template to create a public S3 bucket for static website hosting
+
+Parameters:
+  BucketName:
+    Default: "mbucket2343483"
+    Type: "String"
+
+Resources:
+  StaticWebsiteBucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !Ref BucketName # Optional, must be globally unique
+      PublicAccessBlockConfiguration: # Ensure public access is allowed
+        BlockPublicAcls: false
+        IgnorePublicAcls: false
+        BlockPublicPolicy: false
+        RestrictPublicBuckets: false
+      WebsiteConfiguration:
+        IndexDocument: "index.html"
+        ErrorDocument: "error.html"
+      Tags:
+        - Key: "Environment"
+          Value: "StaticWebsite"
+
+  BucketPolicy:
+    Type: "AWS::S3::BucketPolicy"
+    Properties:
+      Bucket: !Ref StaticWebsiteBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: PublicReadGetObject
+            Effect: Allow
+            Principal: "*"
+            Action: "s3:GetObject"
+            Resource: !Sub "${StaticWebsiteBucket.Arn}/*"
+
+Outputs:
+  WebsiteURL:
+    Description: "URL of the static website hosted on S3"
+    Value: !GetAtt StaticWebsiteBucket.WebsiteURL
+
+  BucketName:
+    Description: "Name of the public S3 bucket"
+    Value: !Ref StaticWebsiteBucket
