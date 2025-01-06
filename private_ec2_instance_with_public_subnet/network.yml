@@ -53,3 +53,7 @@ Outputs:
     Value: !Ref MyPrivateSubnet
     Export:
       Name: MyPrivateSubnet
+  MyVPCExport:
+    Value: !Ref myVPC
+    Export:
+      Name: myVPC
