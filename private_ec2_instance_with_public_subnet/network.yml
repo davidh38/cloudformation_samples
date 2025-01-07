@@ -4,6 +4,8 @@ Resources:
     Type: AWS::EC2::VPC
     Properties:
       CidrBlock: 10.0.0.0/22
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
   MyPublicSubnet:
     Type: AWS::EC2::Subnet
     Properties:
@@ -40,8 +42,7 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref MyInternetGateway
 
-
-   # Associate the Route Table with the Subnet
+  # Associate the Route Table with the Subnet
   MySubnetRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
