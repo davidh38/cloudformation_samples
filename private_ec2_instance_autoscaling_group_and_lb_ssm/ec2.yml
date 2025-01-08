@@ -25,6 +25,25 @@ Parameters:
 
 Resources:
 
+  # Launch Template
+  MyLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        InstanceType: !Ref InstanceType
+        ImageId: ami-0453ec754f44f9a4a # Example: Amazon Linux 2 AMI (ensure correct region)
+        NetworkInterfaces:
+          - AssociatePublicIpAddress: true
+            SubnetId: !Ref SubnetId
+            DeviceIndex: 0
+        IamInstanceProfile:
+          Name: !Ref EC2SSMInstanceProfile
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: MyEC2Instance
+
   # add role
   EC2SSMRole:
     Type: AWS::IAM::Role
@@ -49,15 +68,9 @@ Resources:
   EC2Instance:
     Type: AWS::EC2::Instance
     Properties:
-      InstanceType: !Ref InstanceType
-      SubnetId: !Ref SubnetId
-      ImageId: ami-0453ec754f44f9a4a # Example: Amazon Linux 2 AMI (ensure correct region)
-      IamInstanceProfile: !Ref EC2SSMInstanceProfile
-      SecurityGroupIds:
-        - !Ref InstanceSecurityGroup
-      Tags:
-        - Key: Name
-          Value: MyEC2Instance
+      LaunchTemplate:
+        LaunchTemplateId: !Ref MyLaunchTemplate
+        Version: "1"
 
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
