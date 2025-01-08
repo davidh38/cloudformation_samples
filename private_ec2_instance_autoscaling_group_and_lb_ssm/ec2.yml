@@ -1,0 +1,109 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template to create an EC2 instance in a non-default VPC.
+
+Parameters:
+  VpcId:
+    Description: The ID of the non-default VPC
+    Type: AWS::EC2::VPC::Id
+
+  SubnetId:
+    Description: The Subnet ID within the specified VPC
+    Type: AWS::EC2::Subnet::Id
+
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+      - t2.small
+      - t2.medium
+      - t3.micro
+      - t3.small
+      - t3.medium
+    ConstraintDescription: Must be a valid EC2 instance type.
+
+Resources:
+
+  # add role
+  EC2SSMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: EC2SSMRole # Optional, customize or omit to auto-generate
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+
+  EC2SSMInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref EC2SSMRole
+
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      SubnetId: !Ref SubnetId
+      ImageId: ami-0453ec754f44f9a4a # Example: Amazon Linux 2 AMI (ensure correct region)
+      IamInstanceProfile: !Ref EC2SSMInstanceProfile
+      SecurityGroupIds:
+        - !Ref InstanceSecurityGroup
+      Tags:
+        - Key: Name
+          Value: MyEC2Instance
+
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable SSH access within the specified VPC
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+  # Create SSM VPC Endpoint
+  SSMVpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ssm
+      VpcId: !Ref VpcId
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref SubnetId
+      SecurityGroupIds:
+        - !Ref InstanceSecurityGroup
+      PrivateDnsEnabled: true
+
+  # Create SSM Messages VPC Endpoint
+  SSMMessagesVpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ssmmessages
+      VpcId: !Ref VpcId
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref SubnetId
+      SecurityGroupIds:
+        - !Ref InstanceSecurityGroup
+      PrivateDnsEnabled: true
+
+Outputs:
+  InstanceId:
+    Description: ID of the EC2 instance
+    Value: !Ref EC2Instance
+    Export:
+      Name: MyInstance
+  SecurityGroup:
+    Description: Security group
+    Value: !Ref InstanceSecurityGroup
+    Export:
+      Name: SecurityGroup
