@@ -1,0 +1,17 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Parent template for nested stacks with dependencies
+
+Resources:
+  NetworkStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://cf-bucket-123434.s3.us-east-1.amazonaws.com/network.yml
+
+  ApplicationStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: NetworkStack
+    Properties:
+      TemplateURL: https://cf-bucket-123434.s3.us-east-1.amazonaws.com/ec2.yml
+      Parameters:
+        VpcId: !GetAtt NetworkStack.Outputs.MyVPCExport
+        SubnetId: !GetAtt NetworkStack.Outputs.subnetexport
