@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: CloudFormation template to create an EC2 instance in a non-default VPC.
+Description: CloudFormation template for Auto Scaling Group with Launch Template
 
 Parameters:
   VpcId:
@@ -9,6 +9,10 @@ Parameters:
   SubnetId:
     Description: The Subnet ID within the specified VPC
     Type: AWS::EC2::Subnet::Id
+
+  TargetGroupArn:
+    Description: ARN of the Application Load Balancer Target Group
+    Type: String
 
   InstanceType:
     Description: EC2 instance type
@@ -24,12 +28,11 @@ Parameters:
     ConstraintDescription: Must be a valid EC2 instance type.
 
 Resources:
-
-  # add role
+  # IAM Role and Instance Profile
   EC2SSMRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: EC2SSMRole # Optional, customize or omit to auto-generate
+      RoleName: EC2SSMRole
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -46,31 +49,69 @@ Resources:
       Roles:
         - !Ref EC2SSMRole
 
-  EC2Instance:
-    Type: AWS::EC2::Instance
-    Properties:
-      InstanceType: !Ref InstanceType
-      SubnetId: !Ref SubnetId
-      ImageId: ami-0453ec754f44f9a4a # Example: Amazon Linux 2 AMI (ensure correct region)
-      IamInstanceProfile: !Ref EC2SSMInstanceProfile
-      SecurityGroupIds:
-        - !Ref InstanceSecurityGroup
-      Tags:
-        - Key: Name
-          Value: MyEC2Instance
-
+  # Security Group
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Enable SSH access within the specified VPC
+      GroupDescription: Security group for EC2 instances
       VpcId: !Ref VpcId
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 443
           ToPort: 443
           CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
 
-  # Create SSM VPC Endpoint
+  # Launch Template
+  EC2LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub ${AWS::StackName}-launch-template
+      LaunchTemplateData:
+        ImageId: ami-0453ec754f44f9a4a
+        InstanceType: !Ref InstanceType
+        SecurityGroupIds: 
+          - !Ref InstanceSecurityGroup
+        IamInstanceProfile:
+          Name: !Ref EC2SSMInstanceProfile
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            yum update -y
+            yum install -y httpd
+            systemctl start httpd
+            systemctl enable httpd
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: ASG-Instance
+
+  # Auto Scaling Group
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier:
+        - !Ref SubnetId
+      LaunchTemplate:
+        LaunchTemplateId: !Ref EC2LaunchTemplate
+        Version: !GetAtt EC2LaunchTemplate.LatestVersionNumber
+      MinSize: 1
+      MaxSize: 3
+      DesiredCapacity: 2
+      TargetGroupARNs:
+        - !Ref TargetGroupArn
+      HealthCheckType: ELB
+      HealthCheckGracePeriod: 300
+      Tags:
+        - Key: Name
+          Value: ASG-Managed-Instance
+          PropagateAtLaunch: true
+
+  # SSM VPC Endpoints
   SSMVpcEndpoint:
     Type: AWS::EC2::VPCEndpoint
     Properties:
@@ -83,7 +124,6 @@ Resources:
         - !Ref InstanceSecurityGroup
       PrivateDnsEnabled: true
 
-  # Create SSM Messages VPC Endpoint
   SSMMessagesVpcEndpoint:
     Type: AWS::EC2::VPCEndpoint
     Properties:
@@ -97,13 +137,20 @@ Resources:
       PrivateDnsEnabled: true
 
 Outputs:
-  InstanceId:
-    Description: ID of the EC2 instance
-    Value: !Ref EC2Instance
+  AutoScalingGroupName:
+    Description: Name of the Auto Scaling Group
+    Value: !Ref AutoScalingGroup
     Export:
-      Name: MyInstance
+      Name: ASGName
+  
+  LaunchTemplateId:
+    Description: ID of the Launch Template
+    Value: !Ref EC2LaunchTemplate
+    Export:
+      Name: LaunchTemplateId
+
   SecurityGroup:
-    Description: Security group
+    Description: Security group for the instances
     Value: !Ref InstanceSecurityGroup
     Export:
       Name: SecurityGroup

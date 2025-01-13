@@ -11,11 +11,19 @@ Resources:
     Properties:
       VpcId: !Ref myVPC
       CidrBlock: 10.0.0.0/24
-  MyPrivateSubnet:
+      AvailabilityZone: !Select [0, !GetAZs '']
+
+  MyPublicSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref myVPC
       CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+  MyPrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: 10.0.3.0/24
 
   # Add an Internet Gateway
   MyInternetGateway:
@@ -42,11 +50,17 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref MyInternetGateway
 
-  # Associate the Route Table with the Subnet
+  # Associate the Route Table with the Subnets
   MySubnetRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref MyPublicSubnet
+      RouteTableId: !Ref MyPublicRouteTable
+
+  MySubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref MyPublicSubnet2
       RouteTableId: !Ref MyPublicRouteTable
 
 Outputs:
@@ -54,6 +68,14 @@ Outputs:
     Value: !Ref MyPrivateSubnet
     Export:
       Name: MyPrivateSubnet
+  publicSubnet1Export:
+    Value: !Ref MyPublicSubnet
+    Export:
+      Name: MyPublicSubnet1
+  publicSubnet2Export:
+    Value: !Ref MyPublicSubnet2
+    Export:
+      Name: MyPublicSubnet2
   MyVPCExport:
     Value: !Ref myVPC
     Export:
