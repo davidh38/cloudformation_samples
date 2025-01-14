@@ -50,7 +50,7 @@ Resources:
     Type: AWS::EC2::Instance
     Properties:
       InstanceType: !Ref InstanceType
-      SubnetId: !Ref SubnetId
+      SubnetId: !Ref SubnetId 
       ImageId: ami-0453ec754f44f9a4a # Example: Amazon Linux 2 AMI (ensure correct region)
       IamInstanceProfile: !Ref EC2SSMInstanceProfile
       SecurityGroupIds:
