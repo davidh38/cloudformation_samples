@@ -84,6 +84,7 @@ Resources:
             yum install -y httpd
             systemctl start httpd
             systemctl enable httpd
+            echo "hello world" > /var/www/html/index.html
         TagSpecifications:
           - ResourceType: instance
             Tags:

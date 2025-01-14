@@ -24,6 +24,7 @@ Resources:
     Properties:
       VpcId: !Ref myVPC
       CidrBlock: 10.0.3.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
 
   # Add an Internet Gateway
   MyInternetGateway:
@@ -62,6 +63,39 @@ Resources:
     Properties:
       SubnetId: !Ref MyPublicSubnet2
       RouteTableId: !Ref MyPublicRouteTable
+
+  # NAT Gateway Configuration
+  NatGatewayEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayEIP.AllocationId
+      SubnetId: !Ref MyPublicSubnet
+
+  # Private Route Table
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref myVPC
+
+  # Route through NAT Gateway for internet access
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  # Associate Private Route Table with Private Subnet
+  PrivateSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref MyPrivateSubnet
+      RouteTableId: !Ref PrivateRouteTable
 
 Outputs:
   subnetexport:
