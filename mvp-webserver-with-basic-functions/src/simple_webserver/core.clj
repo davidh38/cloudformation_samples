@@ -26,5 +26,5 @@
 
 ;; Start the server
 (defn -main [& args]
-  (println "Starting server on port 3001...")
-  (run-jetty (params/wrap-params handler) {:port 3002 :join? false}))
+  (println "Starting server on port 80...")
+  (run-jetty (params/wrap-params handler) {:port 80 :join? false}))
