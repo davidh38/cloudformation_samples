@@ -89,7 +89,7 @@ Resources:
             cd mvp-webserver-with-basic-functions
             sudo systemctl start docker
             sudo docker build . -t myweb
-            sudo docker run myweb
+            sudo docker run -p 80:80 myweb
         TagSpecifications:
           - ResourceType: instance
             Tags:
