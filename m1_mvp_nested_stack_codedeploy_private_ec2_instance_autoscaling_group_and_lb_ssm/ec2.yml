@@ -81,10 +81,14 @@ Resources:
           Fn::Base64: !Sub |
             #!/bin/bash
             yum update -y
-            yum install -y httpd
-            systemctl start httpd
-            systemctl enable httpd
-            echo "hello world" > /var/www/html/index.html
+            sudo yum install -y git
+            sudo yum install -y docker
+            git clone https://github.com/davidh38/cloudformation_samples.git
+            cd cloudformation_samples
+            cd mvp-webserver-with-basic-functions
+            sudo systemctl status docker
+            sudo docker build . -t myweb
+            sudo docker run myweb
         TagSpecifications:
           - ResourceType: instance
             Tags:
