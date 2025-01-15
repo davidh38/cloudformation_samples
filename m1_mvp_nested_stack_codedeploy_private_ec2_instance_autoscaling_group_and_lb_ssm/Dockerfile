@@ -8,7 +8,6 @@ WORKDIR /app
 # Copy project files into the container
 COPY deps.edn .
 COPY src ./src
-COPY resources ./resources
 
 # Download dependencies (cached if deps.edn hasn't changed)
 RUN clj -P
