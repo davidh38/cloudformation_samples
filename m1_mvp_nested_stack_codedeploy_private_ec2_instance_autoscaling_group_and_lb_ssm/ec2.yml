@@ -83,10 +83,11 @@ Resources:
             yum update -y
             sudo yum install -y git
             sudo yum install -y docker
+            cd
             git clone https://github.com/davidh38/cloudformation_samples.git
             cd cloudformation_samples
             cd mvp-webserver-with-basic-functions
-            sudo systemctl status docker
+            sudo systemctl start docker
             sudo docker build . -t myweb
             sudo docker run myweb
         TagSpecifications:
