@@ -14,9 +14,13 @@
      :headers {"Content-Type" "text/html"}
      :body (load-template "templates/dashboard.html")}))
 
+
 (defn handler [request]
   (case [(:request-method request) (:uri request)]
     [:get "/"] {:status 200
+                :headers {"Content-Type" "text/html"}
+                :body (load-template "templates/heropage.html")}
+    [:get "/login"] {:status 200
                 :headers {"Content-Type" "text/html"}
                 :body (load-template "templates/login.html")}
     [:post "/login"] (handle-login (:form-params request))
