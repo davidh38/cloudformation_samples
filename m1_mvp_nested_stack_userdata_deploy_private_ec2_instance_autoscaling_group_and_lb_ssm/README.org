@@ -14,4 +14,5 @@ The private network consists of of an Auto Scaling Group with EC2 instances.
 + create stack with ec2.yml
 
 
-* Missing steps
+* Improvements
++ While creating the elb, the public networks and the vpc id has to be given for now.
