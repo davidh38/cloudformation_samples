@@ -1,5 +1,5 @@
 * Description
-Creates a stack with a private and a public network
+Creates a stack with a private and 2 public networks (for the elb)
 
 2 public networks ---> private network
 
@@ -16,3 +16,4 @@ The private network consists of of an Auto Scaling Group with EC2 instances.
 
 * Improvements
 + While creating the elb, the public networks and the vpc id has to be given for now.
++ While createing the asg the target group of the elb has to be referenced and also the private network.
