@@ -1,7 +1,7 @@
 * Description
 Creates a stack with a private and a public network
 
-public network ---> private network
+2 public networks ---> private network
 
 The public network has a NAT instance and a load balancer. The NAT instance is to get the user data (docker e.g.). The load balancer 
 
