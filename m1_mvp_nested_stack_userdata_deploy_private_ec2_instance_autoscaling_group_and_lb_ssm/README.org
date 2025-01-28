@@ -1,3 +1,12 @@
+* Description
+Creates a stack with a private and a public network
+
+public network ---> private network
+
+The public network has a NAT instance and a load balancer. The NAT instance is to get the user data (docker e.g.). The load balancer 
+
+The private network consists of of an Auto Scaling Group with EC2 instances.
+
 
 * Install
 + create stack with network.yml
