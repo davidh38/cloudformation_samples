@@ -18,3 +18,7 @@ The private network consists of of an Auto Scaling Group with EC2 instances.
 + copy the files to s3 bucket and from there use git sync.
 + While creating the elb, the public networks and the vpc id has to be given for now.
 + While createing the asg the target group of the elb has to be referenced and also the private network.
+
+* Test
+- one
+- two
