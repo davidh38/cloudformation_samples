@@ -1,0 +1,55 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for DNS Records configuration
+
+Parameters:
+  DomainName:
+    Type: String
+    Description: The domain name for the application (e.g., example.com)
+  
+  HostedZoneId:
+    Type: AWS::Route53::HostedZone::Id
+    Description: The Route 53 Hosted Zone ID for the domain
+  
+  LoadBalancerDNSName:
+    Type: String
+    Description: DNS name of the Application Load Balancer
+  
+  LoadBalancerHostedZoneId:
+    Type: String
+    Description: Canonical hosted zone ID of the Application Load Balancer
+
+Resources:
+  ApexDNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        DNSName: !Ref LoadBalancerDNSName
+        HostedZoneId: !Ref LoadBalancerHostedZoneId
+        EvaluateTargetHealth: true
+
+  WwwDNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Sub www.${DomainName}
+      Type: A
+      AliasTarget:
+        DNSName: !Ref LoadBalancerDNSName
+        HostedZoneId: !Ref LoadBalancerHostedZoneId
+        EvaluateTargetHealth: true
+
+Outputs:
+  DomainEndpoint:
+    Description: Domain endpoint for the application
+    Value: !Ref DomainName
+    Export:
+      Name: !Sub ${AWS::StackName}-DomainEndpoint
+  
+  WwwDomainEndpoint:
+    Description: WWW domain endpoint for the application
+    Value: !Sub www.${DomainName}
+    Export:
+      Name: !Sub ${AWS::StackName}-WwwDomainEndpoint

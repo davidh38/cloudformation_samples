@@ -1,17 +1,68 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Parent template for nested stacks with dependencies
 
+Parameters:
+  DomainName:
+    Type: String
+    Description: The domain name for the application (e.g., example.com)
+  
+  HostedZoneId:
+    Type: AWS::Route53::HostedZone::Id
+    Description: The Route 53 Hosted Zone ID for the domain
+
 Resources:
   NetworkStack:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: https://cf-bucket-123434.s3.us-east-1.amazonaws.com/network.yml
 
+  CertificateStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://cf-bucket-123434.s3.us-east-1.amazonaws.com/dns_and_certificate.yml
+      Parameters:
+        DomainName: !Ref DomainName
+        HostedZoneId: !Ref HostedZoneId
+
+  LoadBalancerStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: 
+      - NetworkStack
+      - CertificateStack
+    Properties:
+      TemplateURL: https://cf-bucket-123434.s3.us-east-1.amazonaws.com/loadbalancer.yml
+      Parameters:
+        VpcId: !GetAtt NetworkStack.Outputs.MyVPCExport
+        PublicSubnet1: !GetAtt NetworkStack.Outputs.PublicSubnet1Export
+        PublicSubnet2: !GetAtt NetworkStack.Outputs.PublicSubnet2Export
+        CertificateArn: !GetAtt CertificateStack.Outputs.CertificateArn
+
+  DNSRecordsStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: LoadBalancerStack
+    Properties:
+      TemplateURL: https://cf-bucket-123434.s3.us-east-1.amazonaws.com/dns_records.yml
+      Parameters:
+        DomainName: !Ref DomainName
+        HostedZoneId: !Ref HostedZoneId
+        LoadBalancerDNSName: !GetAtt LoadBalancerStack.Outputs.LoadBalancerDNS
+        LoadBalancerHostedZoneId: !GetAtt LoadBalancerStack.Outputs.LoadBalancerCanonicalHostedZoneID
+
   ApplicationStack:
     Type: AWS::CloudFormation::Stack
-    DependsOn: NetworkStack
+    DependsOn: LoadBalancerStack
     Properties:
       TemplateURL: https://cf-bucket-123434.s3.us-east-1.amazonaws.com/ec2.yml
       Parameters:
         VpcId: !GetAtt NetworkStack.Outputs.MyVPCExport
         SubnetId: !GetAtt NetworkStack.Outputs.subnetexport
+        TargetGroupArn: !GetAtt LoadBalancerStack.Outputs.TargetGroupArn
+
+Outputs:
+  DomainEndpoint:
+    Description: Domain endpoint for the application
+    Value: !GetAtt DNSRecordsStack.Outputs.DomainEndpoint
+  
+  CertificateArn:
+    Description: ARN of the SSL/TLS certificate
+    Value: !GetAtt CertificateStack.Outputs.CertificateArn

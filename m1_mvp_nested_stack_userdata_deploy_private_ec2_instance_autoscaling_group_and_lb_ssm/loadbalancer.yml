@@ -5,6 +5,10 @@ Parameters:
   VpcId:
     Type: AWS::EC2::VPC::Id
     Description: VPC ID where the load balancer will be deployed
+
+  CertificateArn:
+    Type: String
+    Description: ARN of the SSL/TLS certificate for HTTPS
   
   PublicSubnet1:
     Type: AWS::EC2::Subnet::Id
@@ -67,7 +71,7 @@ Resources:
         - Key: Name
           Value: MyALBTargetGroup
 
-  # Listener
+  # HTTPS Listener on 443
   ALBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
@@ -75,8 +79,10 @@ Resources:
         - Type: forward
           TargetGroupArn: !Ref ALBTargetGroup
       LoadBalancerArn: !Ref ApplicationLoadBalancer
-      Port: 80
-      Protocol: HTTP
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref CertificateArn
 
 Outputs:
   LoadBalancerDNS:
@@ -90,3 +96,9 @@ Outputs:
     Value: !Ref ALBTargetGroup
     Export:
       Name: ALBTargetGroupArn
+
+  LoadBalancerCanonicalHostedZoneID:
+    Description: Canonical hosted zone ID of the load balancer
+    Value: !GetAtt ApplicationLoadBalancer.CanonicalHostedZoneID
+    Export:
+      Name: ALBCanonicalHostedZoneID

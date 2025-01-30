@@ -73,6 +73,8 @@ Resources:
       LaunchTemplateData:
         ImageId: ami-0453ec754f44f9a4a
         InstanceType: !Ref InstanceType
+        Monitoring:
+          Enabled: true
         SecurityGroupIds: 
           - !Ref InstanceSecurityGroup
         IamInstanceProfile:
