@@ -16,7 +16,7 @@
                    :dbname "user_management"
                    :host "database-1.cluster-csc63aoyrv6e.us-east-1.rds.amazonaws.com"
                    :user "root"
-                   :password "tVk1(HqC5EFR7i.bvZ7W.1j2VwMv"}
+                   :password "no pass"}
           query-result (jdbc/query db-spec
                                    ["SELECT username, hashed_password FROM users WHERE email = ?" email])]
       (println "Query result:" query-result))
