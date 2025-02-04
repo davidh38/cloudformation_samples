@@ -1,0 +1,27 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for creating DNS records
+
+Parameters:
+  DomainName:
+    Type: String
+    Description: The domain name for the DNS records (e.g., example.com)
+
+  HostedZoneId:
+    Type: AWS::Route53::HostedZone::Id
+    Description: The Route 53 Hosted Zone ID for the domain
+
+Resources:
+  DNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt LoadBalancerStack.Outputs.LoadBalancerDNS
+        HostedZoneId: !GetAtt LoadBalancerStack.Outputs.LoadBalancerCanonicalHostedZoneID
+
+Outputs:
+  DomainEndpoint:
+    Description: Domain endpoint for the application
+    Value: !Ref DNSRecord

@@ -75,7 +75,6 @@ Resources:
     Properties:
       AllocationId: !GetAtt NatGatewayEIP.AllocationId
       SubnetId: !Ref MyPublicSubnet
-
   # Private Route Table
   PrivateRouteTable:
     Type: AWS::EC2::RouteTable
@@ -113,4 +112,4 @@ Outputs:
   MyVPCExport:
     Value: !Ref myVPC
     Export:
-      Name: myVPC
+      Name: MyVPC

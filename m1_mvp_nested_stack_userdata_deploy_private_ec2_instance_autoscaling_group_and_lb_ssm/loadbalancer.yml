@@ -1,30 +1,13 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'CloudFormation template for Application Load Balancer in public subnet'
 
-Parameters:
-  VpcId:
-    Type: AWS::EC2::VPC::Id
-    Description: VPC ID where the load balancer will be deployed
-
-  CertificateArn:
-    Type: String
-    Description: ARN of the SSL/TLS certificate for HTTPS
-  
-  PublicSubnet1:
-    Type: AWS::EC2::Subnet::Id
-    Description: First public subnet ID for the load balancer
-  
-  PublicSubnet2:
-    Type: AWS::EC2::Subnet::Id
-    Description: Second public subnet ID for the load balancer
-
 Resources:
   # Security Group for the ALB
   ALBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Security group for Application Load Balancer
-      VpcId: !Ref VpcId
+      VpcId: !ImportValue myVPC
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 443
@@ -44,8 +27,8 @@ Resources:
       SecurityGroups: 
         - !Ref ALBSecurityGroup
       Subnets: 
-        - !Ref PublicSubnet1
-        - !Ref PublicSubnet2
+        - !ImportValue MyPublicSubnet1
+        - !ImportValue MyPublicSubnet2
       Tags:
         - Key: Name
           Value: MyApplicationLoadBalancer
@@ -57,7 +40,7 @@ Resources:
       Name: my-alb-target-group
       Port: 80
       Protocol: HTTP
-      VpcId: !Ref VpcId
+      VpcId: !ImportValue myVPC
       HealthCheckEnabled: true
       HealthCheckIntervalSeconds: 30
       HealthCheckPath: /
@@ -82,7 +65,7 @@ Resources:
       Port: 443
       Protocol: HTTPS
       Certificates:
-        - CertificateArn: !Ref CertificateArn
+        - CertificateArn: !ImportValue CertificateArn
 
 Outputs:
   LoadBalancerDNS:

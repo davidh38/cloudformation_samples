@@ -14,15 +14,14 @@ Resources:
   NetworkStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: https://cf-bucket-123434.s3.us-east-1.amazonaws.com/network.yml
+      TemplateURL: https://cf-bucket-123434.s3.${AWS::Region}.amazonaws.com/network.yml
 
   CertificateStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: https://cf-bucket-123434.s3.us-east-1.amazonaws.com/dns_and_certificate.yml
+      TemplateURL: https://cf-bucket-123434.s3.${AWS::Region}.amazonaws.com/certificate.yml
       Parameters:
         DomainName: !Ref DomainName
-        HostedZoneId: !Ref HostedZoneId
 
   LoadBalancerStack:
     Type: AWS::CloudFormation::Stack
@@ -30,29 +29,27 @@ Resources:
       - NetworkStack
       - CertificateStack
     Properties:
-      TemplateURL: https://cf-bucket-123434.s3.us-east-1.amazonaws.com/loadbalancer.yml
+      TemplateURL: https://cf-bucket-123434.s3.${AWS::Region}.amazonaws.com/loadbalancer.yml
       Parameters:
         VpcId: !GetAtt NetworkStack.Outputs.MyVPCExport
         PublicSubnet1: !GetAtt NetworkStack.Outputs.PublicSubnet1Export
         PublicSubnet2: !GetAtt NetworkStack.Outputs.PublicSubnet2Export
         CertificateArn: !GetAtt CertificateStack.Outputs.CertificateArn
 
-  DNSRecordsStack:
+  DNSStack:
     Type: AWS::CloudFormation::Stack
-    DependsOn: LoadBalancerStack
+    DependsOn: CertificateStack
     Properties:
-      TemplateURL: https://cf-bucket-123434.s3.us-east-1.amazonaws.com/dns_records.yml
+      TemplateURL: https://cf-bucket-123434.s3.${AWS::Region}.amazonaws.com/dns.yml
       Parameters:
         DomainName: !Ref DomainName
         HostedZoneId: !Ref HostedZoneId
-        LoadBalancerDNSName: !GetAtt LoadBalancerStack.Outputs.LoadBalancerDNS
-        LoadBalancerHostedZoneId: !GetAtt LoadBalancerStack.Outputs.LoadBalancerCanonicalHostedZoneID
 
   ApplicationStack:
     Type: AWS::CloudFormation::Stack
     DependsOn: LoadBalancerStack
     Properties:
-      TemplateURL: https://cf-bucket-123434.s3.us-east-1.amazonaws.com/ec2.yml
+      TemplateURL: https://cf-bucket-123434.s3.${AWS::Region}.amazonaws.com/ec2.yml
       Parameters:
         VpcId: !GetAtt NetworkStack.Outputs.MyVPCExport
         SubnetId: !GetAtt NetworkStack.Outputs.subnetexport

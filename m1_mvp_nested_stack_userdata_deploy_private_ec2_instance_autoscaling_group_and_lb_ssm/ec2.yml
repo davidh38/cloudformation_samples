@@ -2,18 +2,6 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: CloudFormation template for Auto Scaling Group with Launch Template
 
 Parameters:
-  VpcId:
-    Description: The ID of the non-default VPC
-    Type: AWS::EC2::VPC::Id
-
-  SubnetId:
-    Description: The Subnet ID within the specified VPC
-    Type: AWS::EC2::Subnet::Id
-
-  TargetGroupArn:
-    Description: ARN of the Application Load Balancer Target Group
-    Type: String
-
   InstanceType:
     Description: EC2 instance type
     Type: String
@@ -42,6 +30,18 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+      Policies:
+        - PolicyName: CloudWatchLogsAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource: "arn:aws:logs:*:*:*"
 
   EC2SSMInstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -54,7 +54,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Security group for EC2 instances
-      VpcId: !Ref VpcId
+      VpcId: !ImportValue myVPC
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 443
@@ -80,18 +80,64 @@ Resources:
         IamInstanceProfile:
           Name: !Ref EC2SSMInstanceProfile
         UserData:
-          Fn::Base64: !Sub |
-            #!/bin/bash
-            yum update -y
-            sudo yum install -y git
-            sudo yum install -y docker
-            cd
-            git clone https://github.com/davidh38/cloudformation_samples.git
-            cd cloudformation_samples
-            cd mvp-webserver-with-basic-functions
-            sudo systemctl start docker
-            sudo docker build . -t myweb
-            sudo docker run -p 80:80 myweb
+          Fn::Base64:
+            Fn::Sub: |
+              #!/bin/bash -xe
+              
+              # Redirect all output to CloudWatch Logs
+              exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
+              
+              echo "Starting UserData script execution"
+              
+              # Update system packages
+              echo "Updating system packages..."
+              yum update -y
+              
+              # Install required packages
+              echo "Installing required packages..."
+              yum install -y git docker amazon-cloudwatch-agent
+              
+              # Enable and start Docker service
+              echo "Configuring Docker service..."
+              systemctl enable docker
+              systemctl start docker
+              
+              # Configure Docker logging
+              echo "Configuring Docker logging..."
+              mkdir -p /etc/docker
+              echo '{"log-driver": "awslogs","log-opts": {"awslogs-region": "${AWS::Region}","awslogs-group": "my-docker-logs"}}' > /etc/docker/daemon.json
+              systemctl restart docker
+              
+              # Clone and build application
+              echo "Cloning application repository..."
+              cd /opt || exit 1
+              
+              if ! git clone https://github.com/davidh38/cloudformation_samples.git; then
+                echo "Failed to clone repository"
+                exit 1
+              fi
+              
+              if ! cd cloudformation_samples/mvp-webserver-with-basic-functions; then
+                echo "Failed to change to application directory"
+                exit 1
+              fi
+              
+              echo "Building Docker image..."
+              if ! docker build -t myweb .; then
+                echo "Failed to build Docker image"
+                exit 1
+              fi
+              
+              echo "Starting Docker container..."
+              docker run -d \
+                --restart unless-stopped \
+                -p 80:80 \
+                --log-driver=awslogs \
+                --log-opt awslogs-group=my-docker-logs \
+                --log-opt awslogs-region=${AWS::Region} \
+                myweb
+              
+              echo "UserData script completed successfully"
         TagSpecifications:
           - ResourceType: instance
             Tags:
@@ -103,7 +149,7 @@ Resources:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       VPCZoneIdentifier:
-        - !Ref SubnetId
+        - !ImportValue MyPrivateSubnet
       LaunchTemplate:
         LaunchTemplateId: !Ref EC2LaunchTemplate
         Version: !GetAtt EC2LaunchTemplate.LatestVersionNumber
@@ -111,23 +157,23 @@ Resources:
       MaxSize: 1
       DesiredCapacity: 1
       TargetGroupARNs:
-        - !Ref TargetGroupArn
+        - !ImportValue ALBTargetGroupArn
       HealthCheckType: ELB
       HealthCheckGracePeriod: 300
       Tags:
         - Key: Name
           Value: ASG-Managed-Instance
           PropagateAtLaunch: true
-
+h
   # SSM VPC Endpoints
   SSMVpcEndpoint:
     Type: AWS::EC2::VPCEndpoint
     Properties:
       ServiceName: !Sub com.amazonaws.${AWS::Region}.ssm
-      VpcId: !Ref VpcId
+      VpcId: !ImportValue myVPC
       VpcEndpointType: Interface
       SubnetIds:
-        - !Ref SubnetId
+        - !ImportValue MyPrivateSubnet
       SecurityGroupIds:
         - !Ref InstanceSecurityGroup
       PrivateDnsEnabled: true
@@ -136,16 +182,16 @@ Resources:
     Type: AWS::EC2::VPCEndpoint
     Properties:
       ServiceName: !Sub com.amazonaws.${AWS::Region}.ssmmessages
-      VpcId: !Ref VpcId
+      VpcId: !ImportValue myVPC
       VpcEndpointType: Interface
       SubnetIds:
-        - !Ref SubnetId
+        - !ImportValue MyPrivateSubnet
       SecurityGroupIds:
         - !Ref InstanceSecurityGroup
       PrivateDnsEnabled: true
 
 Outputs:
-  AutoScalingGroupName:
+  ASGName:
     Description: Name of the Auto Scaling Group
     Value: !Ref AutoScalingGroup
     Export:
