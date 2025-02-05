@@ -107,3 +107,15 @@ Outputs:
     Export:
       Name: CertificateArn
     Value: !Ref Certificate
+    
+  DomainName:
+    Description: Domain name for the application
+    Export:
+      Name: ApplicationDomainName
+    Value: !Ref DomainName
+    
+  HostedZoneId:
+    Description: Route 53 Hosted Zone ID
+    Export:
+      Name: ApplicationHostedZoneId
+    Value: !GetAtt HostedZoneLookup.HostedZoneId
