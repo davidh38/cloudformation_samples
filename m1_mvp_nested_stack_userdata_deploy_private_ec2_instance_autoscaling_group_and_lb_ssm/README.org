@@ -21,8 +21,33 @@ or use the master.yml
 cursive --exclude "*" --include "*.yml" --include "*.yaml"
 
 
-
 * Improvements
 + copy the files to s3 bucket and from there use git sync.
 + While creating the elb, the public networks and the vpc id has to be given for now.
 + While createing the asg the target group of the elb has to be referenced and also the private network.
+
+
+Reviewing this:
+
+After reviewing all the templates, I've identified several areas for improvement in terms of security, maintainability, and best practices:
+
+Network Configuration:
+CIDR blocks are hardcoded
+No tags on VPC resources
+Missing flow logs for network monitoring
+No explicit NACL configurations
+Security:
+Security group in EC2 template allows inbound 80/443 from 0.0.0.0/0
+Missing egress rules in security groups
+IAM role policies could be more restrictive
+Missing encryption configurations for sensitive data
+Infrastructure:
+No backup/snapshot strategy
+No explicit monitoring/alerting setup
+Missing cost optimization features
+Limited error handling in user data script
+Template Structure:
+Limited use of parameters
+Missing descriptions for resources
+No conditions for environment-specific configurations
+Hardcoded values that should be parameters
