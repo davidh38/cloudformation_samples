@@ -164,7 +164,7 @@ Resources:
         - Key: Name
           Value: ASG-Managed-Instance
           PropagateAtLaunch: true
-h
+
   # SSM VPC Endpoints
   SSMVpcEndpoint:
     Type: AWS::EC2::VPCEndpoint

@@ -112,4 +112,4 @@ Outputs:
   MyVPCExport:
     Value: !Ref myVPC
     Export:
-      Name: MyVPC
+      Name: myVPC

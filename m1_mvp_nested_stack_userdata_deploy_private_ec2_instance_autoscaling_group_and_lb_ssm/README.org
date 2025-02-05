@@ -10,8 +10,16 @@ The private network consists of of an Auto Scaling Group with EC2 instances.
 
 * Install
 + create stack with network.yml
-+ create stack with loadbalancer.yml
++ create stack with certificate.yml
++ create loadbalancer.yml
 + create stack with ec2.yml
++ dns
+
+or use the master.yml
+
++ aws s3 cp . s3://cf-bucket-123434/ --re
+cursive --exclude "*" --include "*.yml" --include "*.yaml"
+
 
 
 * Improvements
