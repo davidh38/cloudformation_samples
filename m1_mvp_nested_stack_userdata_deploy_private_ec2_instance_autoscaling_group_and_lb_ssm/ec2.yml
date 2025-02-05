@@ -49,6 +49,16 @@ Resources:
       Roles:
         - !Ref EC2SSMRole
 
+  # CloudWatch Log Group
+  DockerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: my-docker-logs
+      RetentionInDays: 30
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-docker-logs
+
   # Security Group
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
