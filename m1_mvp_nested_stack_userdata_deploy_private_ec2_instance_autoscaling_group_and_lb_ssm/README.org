@@ -1,53 +1,86 @@
-* Description
-Creates a stack with a private and 2 public networks (for the elb)
+#+TITLE: AWS CloudFormation MVP Stack
+#+AUTHOR: David H
+#+DATE: [2025-02-05]
 
-2 public networks ---> private network
+* Overview
+This CloudFormation project creates a secure, scalable infrastructure with public and private networks, featuring an Application Load Balancer and auto-scaling EC2 instances.
 
-The public network has a NAT instance and a load balancer. The NAT instance is to get the user data (docker e.g.). The load balancer 
+* Architecture
+** Network Layout
+- Two public subnets for the Application Load Balancer
+- One private subnet for EC2 instances
+- NAT Gateway in public subnet for outbound internet access
+- VPC with proper routing and security configurations
 
-The private network consists of of an Auto Scaling Group with EC2 instances.
+** Components
+*** Load Balancer
+- Internet-facing Application Load Balancer
+- HTTPS listener on port 443
+- SSL/TLS certificate from ACM
+- Health checks configured
 
+*** Compute
+- Auto Scaling Group in private subnet
+- Launch Template with user data for application deployment
+- SSM Session Manager access configured
+- CloudWatch logging enabled
 
-* Install
-+ create stack with network.yml
-+ create stack with certificate.yml
-+ create loadbalancer.yml
-+ create stack with ec2.yml
-+ dns
+*** Security
+- SSL/TLS encryption for HTTPS traffic
+- Private instances with no direct internet access
+- Security groups with minimal required access
+- IAM roles following principle of least privilege
 
-or use the master.yml
+* Installation
+** Prerequisites
+- AWS CLI configured with appropriate credentials
+- S3 bucket for template storage
+- Route 53 hosted zone for your domain
 
-+ aws s3 cp . s3://cf-bucket-123434/ --re
-cursive --exclude "*" --include "*.yml" --include "*.yaml"
+** Deployment Steps
+1. Upload templates to S3:
+   #+BEGIN_SRC bash
+   aws s3 cp . s3://cf-bucket-123434/ --recursive --exclude "*" --include "*.yml" --include "*.yaml"
+   #+END_SRC
 
+2. Deploy using master template:
+   - Use AWS Console or CLI to create stack with =master.yml=
+   - Stack will automatically create all nested stacks in the correct order:
+     1. Network infrastructure
+     2. SSL/TLS certificate
+     3. Load balancer
+     4. EC2 instances
+     5. DNS configuration
 
-* Improvements
-+ copy the files to s3 bucket and from there use git sync.
-+ While creating the elb, the public networks and the vpc id has to be given for now.
-+ While createing the asg the target group of the elb has to be referenced and also the private network.
+** Alternative Manual Deployment
+Deploy stacks individually in this order:
+1. =network.yml= - Base network infrastructure
+2. =certificate.yml= - SSL/TLS certificate
+3. =loadbalancer.yml= - Application Load Balancer
+4. =ec2.yml= - Auto Scaling Group and instances
+5. =dns.yml= - Route 53 DNS configuration
 
+* Future Improvements
+** Infrastructure
+- Implement cross-zone load balancing
+- Add backup and snapshot strategies
+- Configure enhanced monitoring and alerting
+- Implement cost optimization features
 
-Reviewing this:
+** Security
+- Implement WAF for enhanced security
+- Add GuardDuty for threat detection
+- Configure AWS Config rules
+- Implement Systems Manager patch management
 
-After reviewing all the templates, I've identified several areas for improvement in terms of security, maintainability, and best practices:
+** Automation
+- Add CI/CD pipeline for deployments
+- Implement automated testing
+- Add drift detection
+- Create automated backup procedures
 
-Network Configuration:
-CIDR blocks are hardcoded
-No tags on VPC resources
-Missing flow logs for network monitoring
-No explicit NACL configurations
-Security:
-Security group in EC2 template allows inbound 80/443 from 0.0.0.0/0
-Missing egress rules in security groups
-IAM role policies could be more restrictive
-Missing encryption configurations for sensitive data
-Infrastructure:
-No backup/snapshot strategy
-No explicit monitoring/alerting setup
-Missing cost optimization features
-Limited error handling in user data script
-Template Structure:
-Limited use of parameters
-Missing descriptions for resources
-No conditions for environment-specific configurations
-Hardcoded values that should be parameters
+** Documentation
+- Add detailed architecture diagrams
+- Include troubleshooting guide
+- Document monitoring and maintenance procedures
+- Add cost estimation guidelines
