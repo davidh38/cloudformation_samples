@@ -50,10 +50,15 @@ Internet → ALB → EC2 Instances
 ┌─────────┐     ┌─────┐     ┌──────────────┐
 │Internet │ →   │ ALB │ →   │    ASG       │
 └─────────┘     └─────┘     │  Instances   │
+                            │ ┌──────────┐  │
+                            │ │ Docker   │  │
+                            │ │Container │  │
+                            │ │(Port 80) │  │
+                            │ └──────────┘  │
                             └──────────────┘
     │             │              │
     └─────────────┘              │
-    HTTPS (443) → HTTP (80)      │
+    HTTPS (443) → HTTP (80) → Container
                                 │
 ┌─────────┐     ┌─────┐         │
 │Internet │ ←── │ NAT │ ← · · ·─┤ (Updates/Packages)
