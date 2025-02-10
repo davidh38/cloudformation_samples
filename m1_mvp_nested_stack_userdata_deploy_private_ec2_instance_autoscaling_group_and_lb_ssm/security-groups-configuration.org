@@ -37,6 +37,7 @@ VPC (10.0.0.0/16)
     │   │
     │   └── EC2 Instances (Min: 1, Max: 1)
     │       └── Docker Container (Port 80)
+    │           └── Web Application: mvp-webserver-with-basic-functions
     │
     └── VPC Endpoints
         ├── SSM Endpoint (Port 443)
@@ -54,6 +55,7 @@ Internet → ALB → EC2 Instances
                             │ │ Docker   │  │
                             │ │Container │  │
                             │ │(Port 80) │  │
+                            │ │Web App   │  │
                             │ └──────────┘  │
                             └──────────────┘
     │             │              │
@@ -85,8 +87,8 @@ SSM & CloudWatch                 │
 ** 80/TCP (Internal)
 - Purpose: Web application traffic from ALB
 - Source: ALB Security Group
-- Target: Docker container running web application
-- Flow: ALB → EC2 Instance → Docker Container
+- Target: Docker container running mvp-webserver-with-basic-functions
+- Flow: ALB → EC2 Instance → Docker Container (Web App)
 
 * SECURITY CONSIDERATIONS
 ** Network Isolation
