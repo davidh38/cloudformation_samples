@@ -85,8 +85,6 @@ Public Traffic (Internet-Facing)
          │               │     Internal HTTP:80         │ │ └──────────┘   │   │
          │               │                             │ └────────────────┘   │
          │               │                             └──────────────────────┘
-         │               │
-         │               └─────── DNS Resolution ──────▶ ALB
          │
     ┌─────────┐      ┌─────┐
     │Internet │◀─────│ NAT │◀ ─ ─ ─ ─ ─ ─ ─ Updates/Packages
