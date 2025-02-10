@@ -49,19 +49,19 @@ VPC (10.0.0.0/16)
 Internet → ALB → EC2 Instances
 
 #+begin_example
-┌─────────┐    ┌────────┐    ┌─────┐    ┌──────────────┐
-│Internet │ →  │Route53 │ →  │ ALB │ →  │    ASG       │
-└─────────┘    └────────┘    └─────┘    │  Instances   │
-                   ↑            ↑        │ ┌──────────┐  │
-                   │            │        │ │ Docker   │  │
-              DNS A Record   Certificate │ │Container │  │
-                                        │ │(Port 80) │  │
-                                        │ │Web App   │  │
-                                        │ └──────────┘  │
-                                        └──────────────┘
-    │              │            │              │
-    └──────────────┴────────────┘              │
-    DNS → HTTPS (443) + ACM Cert → HTTP (80) → Container
+┌─────────┐     ┌────────┐     ┌─────┐     ┌──────────────┐
+│Internet │ →   │Route53 │ →   │ ALB │ →   │    ASG       │
+└─────────┘     └────────┘     └─────┘     │  Instances   │
+    │               │            │          │ ┌──────────┐  │
+    │               ↓            ↓          │ │ Docker   │  │
+    │          DNS Record    Certificate    │ │Container │  │
+    │               │            │          │ │(Port 80) │  │
+    │               │            │          │ │Web App   │  │
+    │               │            │          │ └──────────┘  │
+    │               │            │          └──────────────┘
+    └───────────────┴────────────┘                │
+           DNS → HTTPS (443) + ACM                 │
+                     HTTP (80) → → → → → → → → → →─┘
                                 │
 ┌─────────┐     ┌─────┐         │
 │Internet │ ←── │ NAT │ ← · · ·─┤ (Updates/Packages)
