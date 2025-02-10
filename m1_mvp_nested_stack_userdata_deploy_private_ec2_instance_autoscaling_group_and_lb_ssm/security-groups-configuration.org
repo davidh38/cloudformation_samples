@@ -25,11 +25,18 @@ VPC (10.0.0.0/16)
 │       └── Routes traffic to private instances (Port 80)
 │
 └── Private Subnet (via NAT Gateway)
-    ├── EC2 Instances (Auto Scaling Group)
-    │   ├── Security Group
-    │   │   ├── Inbound Port 80: Web Traffic from ALB
-    │   │   └── Inbound Port 443: SSM Access
-    │   └── Docker Container (Port 80)
+    ├── Auto Scaling Group
+    │   ├── Launch Template
+    │   │   ├── AMI: Amazon Linux 2
+    │   │   ├── Instance Type: t2.micro
+    │   │   ├── Security Group
+    │   │   │   ├── Inbound Port 80: Web Traffic from ALB
+    │   │   │   └── Inbound Port 443: SSM Access
+    │   │   ├── IAM Role: EC2SSMRole
+    │   │   └── UserData: Docker + CloudWatch Agent
+    │   │
+    │   └── EC2 Instances (Min: 1, Max: 1)
+    │       └── Docker Container (Port 80)
     │
     └── VPC Endpoints
         ├── SSM Endpoint (Port 443)
@@ -41,8 +48,9 @@ Internet → ALB → EC2 Instances
 
 #+begin_example
 ┌─────────┐     ┌─────┐     ┌──────────────┐
-│Internet │ →   │ ALB │ →   │EC2 Instances │
-└─────────┘     └─────┘     └──────────────┘
+│Internet │ →   │ ALB │ →   │    ASG       │
+└─────────┘     └─────┘     │  Instances   │
+                            └──────────────┘
     │             │              │
     └─────────────┘              │
     HTTPS (443) → HTTP (80)      │
