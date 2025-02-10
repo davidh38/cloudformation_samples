@@ -1,0 +1,83 @@
+SECURITY_GROUP_PORTS(7)                System Documentation               SECURITY_GROUP_PORTS(7)
+
+NAME
+       security_group_ports - EC2 instance security group configuration for web and management access
+
+SYNOPSIS
+       Port 80/TCP  - Web application traffic
+       Port 443/TCP - EC2 instance management via AWS Systems Manager (SSM)
+
+DESCRIPTION
+       The security group configuration manages access to EC2 instances running in a private subnet,
+       controlling both web traffic and instance management access. The configuration is implemented
+       through AWS CloudFormation in the ec2.yml template.
+
+NETWORK TOPOLOGY
+       VPC (10.0.0.0/16)
+       ├── Public Subnet
+       │   └── Application Load Balancer
+       │       ├── Listens on Port 80 (HTTP)
+       │       └── Routes traffic to private instances
+       │
+       └── Private Subnet
+           ├── EC2 Instances (Auto Scaling Group)
+           │   ├── Security Group
+           │   │   ├── Inbound Port 80: Web Traffic from ALB
+           │   │   └── Inbound Port 443: SSM Access
+           │   └── Docker Container (Port 80)
+           │
+           └── VPC Endpoints
+               ├── SSM Endpoint (Port 443)
+               └── SSM Messages Endpoint (Port 443)
+
+TRAFFIC FLOW
+       Internet → ALB → EC2 Instances
+       ┌─────────┐     ┌─────┐     ┌──────────────┐
+       │Internet │ →   │ ALB │ →   │EC2 Instances │
+       └─────────┘     └─────┘     └──────────────┘
+           │             │              │
+           └─────────────┘              │
+           HTTP (80)                    │
+                                       │
+       SSM Access                       │
+       ┌─────────┐                     │
+       │AWS SSM  │ → → → → → → → → → →─┘
+       └─────────┘     HTTPS (443)
+
+PORTS
+       80/TCP
+              Purpose: Web application traffic
+              Source: 0.0.0.0/0
+              Target: Docker container running web application
+              Flow: Internet → ALB → EC2 Instance → Docker Container
+
+       443/TCP
+              Purpose: EC2 instance management via SSM
+              Source: 0.0.0.0/0
+              Target: SSM endpoints and EC2 instances
+              Flow: AWS SSM → VPC Endpoint → EC2 Instance
+
+SECURITY CONSIDERATIONS
+       1. Network Isolation
+          - EC2 instances are placed in private subnets
+          - No direct internet access to instances
+          - Web traffic must flow through ALB
+
+       2. Access Control
+          - Web traffic (80/TCP) is controlled via ALB
+          - Management access (443/TCP) is restricted to SSM
+          - Instance security group acts as instance-level firewall
+
+       3. Management
+          - SSM provides secure instance management without SSH
+          - VPC endpoints ensure private SSM communication
+          - Auto Scaling Group manages instance lifecycle
+
+SEE ALSO
+       ec2.yml(5), vpc(7), alb(7), ssm(7)
+
+AUTHOR
+       Infrastructure Team
+
+VERSION
+       1.0
