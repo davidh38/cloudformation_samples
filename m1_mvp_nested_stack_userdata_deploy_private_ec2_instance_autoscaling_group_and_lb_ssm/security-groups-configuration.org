@@ -6,7 +6,7 @@
 security_group_ports - EC2 instance security group configuration for web and management access
 
 * SYNOPSIS
-- Port 443/TCP - Web application HTTPS traffic and EC2 instance management via AWS Systems Manager (SSM)
+- Port 443/TCP - HTTPS web traffic (SSL/TLS terminated at ALB) and EC2 instance management via AWS Systems Manager (SSM)
 
 * DESCRIPTION
 The security group configuration manages access to EC2 instances running in a private subnet,
@@ -20,8 +20,9 @@ VPC (10.0.0.0/16)
 ├── Public Subnet
 │   ├── NAT Gateway
 │   │   └── Enables private instances to access internet
-│   └── Application Load Balancer
+│   └── Application Load Balancer (Route53 A Record)
 │       ├── Listens on Port 443 (HTTPS)
+│       ├── SSL/TLS Certificate for HTTPS
 │       └── Routes traffic to private instances (Port 80)
 │
 └── Private Subnet (via NAT Gateway)
@@ -113,5 +114,17 @@ SSM & CloudWatch                 │
 - Performance metrics and logs collection enabled
 - Docker container logs forwarded to CloudWatch
 
+* DNS CONFIGURATION
+- Route53 A record for application domain
+- Alias record pointing to ALB DNS name
+- Enables domain name access to application
+- Integrated with SSL/TLS certificate for secure access
+
+* SSL/TLS CONFIGURATION
+- HTTPS termination at ALB
+- ACM certificate attached to ALB listener
+- Secure communication between clients and ALB
+- Internal traffic (ALB to instances) over HTTP
+
 * SEE ALSO
-ec2.yml(5), vpc(7), alb(7), ssm(7), cloudwatch(7)
+ec2.yml(5), vpc(7), alb(7), ssm(7), cloudwatch(7), acm(7), route53(7)
