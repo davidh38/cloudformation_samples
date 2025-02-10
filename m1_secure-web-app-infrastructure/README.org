@@ -3,7 +3,7 @@
 #+DATE: [2025-02-05]
 
 * Overview
-This CloudFormation project creates a secure, scalable infrastructure with public and private networks, featuring an Application Load Balancer and auto-scaling EC2 instances.
+This CloudFormation project creates a secure, scalable infrastructure with public and private networks, featuring an Application Load Balancer and auto-scaling EC2 instances. The infrastructure is designed to be region-independent, allowing easy deployment across multiple AWS regions. All parameters and resources are configured to work seamlessly regardless of the target region, making it simple to replicate the entire stack for multi-region deployments or disaster recovery scenarios.
 
 * Architecture
 ** Network Layout
@@ -195,15 +195,35 @@ Private Traffic (Internal Only)                              │
 ** Deployment Steps
 1. Upload templates to S3:
    #+BEGIN_SRC bash
-   # Upload templates to us-east-1 region folder
+   # Upload templates to desired regions
+   # For us-east-1:
    aws s3 cp . s3://cf-bucket-123434/us-east-1/ \
      --recursive \
      --exclude "*" \
      --include "*.yml" \
-     --include "*.yaml"
+     --region us-east-1
+
+   # For us-east-2:
+   aws s3 cp . s3://cf-bucket-123434/us-east-2/ \
+     --recursive \
+     --exclude "*" \
+     --include "*.yml" \
+     --region us-east-2
+
+   # For any other region:
+   aws s3 cp . s3://cf-bucket-123434/[region-name]/ \
+     --recursive \
+     --exclude "*" \
+     --include "*.yml" \
+     --region [region-name]
    #+END_SRC
 
-   Note: This example uploads templates to the us-east-1 region folder. For other regions, replace =us-east-1= with your target region.
+   The templates are designed to be region-agnostic. Key features that enable multi-region deployment:
+   - Region-aware parameter defaults
+   - Dynamic AMI selection using SSM parameters
+   - Region-specific resource naming
+   - Automatic AZ selection for network resources
+   - Region-independent IAM roles and policies
 
 2. Deploy using master template:
    - Use AWS Console or CLI to create stack with =master.yml=
