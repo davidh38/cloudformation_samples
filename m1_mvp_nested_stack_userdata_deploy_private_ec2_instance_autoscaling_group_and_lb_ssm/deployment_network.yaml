@@ -1,3 +1,0 @@
-template-file-path: ./m1_mvp_nested_stack_userdata_deploy_private_ec2_instance_autoscaling_group_and_lb_ssm/master.yml
-parameters: 
-tags:
