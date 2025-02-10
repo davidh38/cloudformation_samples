@@ -215,6 +215,64 @@ Deploy stacks individually in this order:
 4. =ec2.yml= - Auto Scaling Group and instances
 5. =dns.yml= - Route 53 DNS configuration
 
+* Cost Analysis
+** Monthly Cost Estimation
+*** Compute (EC2)
+- t2.micro instance (1 instance)
+  - On-demand: ~$8.50/month
+  - Reserved 1-year: ~$5.10/month (40% savings)
+  - Reserved 3-year: ~$3.40/month (60% savings)
+- Auto Scaling Group: No additional cost
+
+*** Network
+- Application Load Balancer
+  - Base cost: ~$18.00/month
+  - Data processing: ~$0.008/GB
+- NAT Gateway
+  - Hourly: ~$32.40/month
+  - Data processing: ~$0.045/GB
+- Route 53
+  - Hosted zone: $0.50/month
+  - Queries: $0.40/million queries
+
+*** Storage and Monitoring
+- CloudWatch
+  - Basic monitoring: Free
+  - Detailed monitoring: ~$2.10/instance/month
+  - Log storage: ~$0.50/GB/month
+- Systems Manager
+  - Session Manager: No additional cost
+  - Parameter Store (standard): Free
+
+** Cost Factors
+- Instance running hours
+- Data transfer (both internet and inter-AZ)
+- Number of requests through ALB
+- CloudWatch log volume
+- Route 53 query volume
+
+** Cost Optimization
+*** Short-term
+- Use Reserved Instances for predictable workloads
+- Monitor and adjust instance size based on utilization
+- Enable detailed monitoring only when needed
+- Set up CloudWatch alarms for unusual cost patterns
+
+*** Long-term
+- Evaluate Savings Plans for compute commitment
+- Consider Spot Instances for non-critical workloads
+- Implement automated instance scheduling
+- Regular review of resource utilization
+
+** Monthly Total (Estimated)
+- Minimum setup (On-demand): ~$60-70/month
+- With reserved instances: ~$55-65/month
+- Additional costs vary based on:
+  - Data transfer volume
+  - Request volume
+  - Log storage needs
+  - Monitoring requirements
+
 * Future Improvements
 ** Infrastructure
 - Implement cross-zone load balancing
