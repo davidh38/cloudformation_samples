@@ -1,11 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: CloudFormation template for creating an SSL/TLS certificate
 
-Parameters:
-  DomainName:
-    Type: String
-    Description: The domain name for the certificate (e.g., example.com)
-    Default: www.mymvp.me
 Resources:
   HostedZoneLookupFunction:
     Type: AWS::Lambda::Function
@@ -92,15 +87,15 @@ Resources:
     Type: Custom::HostedZoneLookup
     Properties:
       ServiceToken: !GetAtt HostedZoneLookupFunction.Arn
-      DomainName: !Ref DomainName
+      DomainName: !ImportValue ApplicationDomainName
 
   Certificate:
     Type: AWS::CertificateManager::Certificate
     Properties:
-      DomainName: !Ref DomainName
+      DomainName: !ImportValue ApplicationDomainName
       ValidationMethod: DNS
       DomainValidationOptions:
-        - DomainName: !Ref DomainName
+        - DomainName: !ImportValue ApplicationDomainName
           HostedZoneId: !GetAtt HostedZoneLookup.HostedZoneId
 
 Outputs:
@@ -114,7 +109,7 @@ Outputs:
     Description: Domain name for the application
     Export:
       Name: ApplicationDomainName
-    Value: !Ref DomainName
+    Value: !ImportValue ApplicationDomainName
     
   HostedZoneId:
     Description: Route 53 Hosted Zone ID

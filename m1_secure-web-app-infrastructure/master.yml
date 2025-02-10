@@ -1,29 +1,40 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Master template for nested stacks with all resources
 
+Parameters:
+  DomainName:
+    Type: String
+    Description: The domain name for the application
+    Default: login.mymvp.me
+
+  BucketName:
+    Type: String
+    Description: Name of the S3 bucket containing CloudFormation templates
+    Default: cf-bucket-123434
+
 Resources:
   NetworkStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub https://s3.amazonaws.com/cf-bucket-123434/${AWS::Region}/network.yml
+      TemplateURL: !Sub https://s3.amazonaws.com/${BucketName}/${AWS::Region}/network.yml
 
   CertificateStack:
     Type: AWS::CloudFormation::Stack
     DependsOn: NetworkStack
     Properties:
-      TemplateURL: !Sub https://s3.amazonaws.com/cf-bucket-123434/${AWS::Region}/certificate.yml
+      TemplateURL: !Sub https://s3.amazonaws.com/${BucketName}/${AWS::Region}/certificate.yml
 
   LoadBalancerStack:
     Type: AWS::CloudFormation::Stack
     DependsOn: CertificateStack
     Properties:
-      TemplateURL: !Sub https://s3.amazonaws.com/cf-bucket-123434/${AWS::Region}/loadbalancer.yml
+      TemplateURL: !Sub https://s3.amazonaws.com/${BucketName}/${AWS::Region}/loadbalancer.yml
 
   ApplicationStack:
     Type: AWS::CloudFormation::Stack
     DependsOn: LoadBalancerStack
     Properties:
-      TemplateURL: !Sub https://s3.amazonaws.com/cf-bucket-123434/${AWS::Region}/ec2.yml
+      TemplateURL: !Sub https://s3.amazonaws.com/${BucketName}/${AWS::Region}/ec2.yml
 
   DNSStack:
     Type: AWS::CloudFormation::Stack
@@ -31,7 +42,7 @@ Resources:
       - LoadBalancerStack
       - CertificateStack
     Properties:
-      TemplateURL: !Sub https://s3.amazonaws.com/cf-bucket-123434/${AWS::Region}/dns.yml
+      TemplateURL: !Sub https://s3.amazonaws.com/${BucketName}/${AWS::Region}/dns.yml
 
 Outputs:
   DomainEndpoint:
@@ -45,3 +56,9 @@ Outputs:
   CertificateArn:
     Description: ARN of the SSL/TLS certificate
     Value: !GetAtt CertificateStack.Outputs.CertificateArn
+    
+  ApplicationDomain:
+    Description: Domain name for the application
+    Value: !Ref DomainName
+    Export:
+      Name: ApplicationDomainName
