@@ -7,10 +7,74 @@ This CloudFormation project creates a secure, scalable infrastructure with publi
 
 * Architecture
 ** Network Layout
+*** Overview
 - Two public subnets for the Application Load Balancer
 - One private subnet for EC2 instances
 - NAT Gateway in public subnet for outbound internet access
 - VPC with proper routing and security configurations
+
+*** Detailed Network Topology
+#+begin_example
+VPC (10.0.0.0/16)
+├── Public Subnet
+│   ├── NAT Gateway
+│   │   └── Enables private instances to access internet
+│   └── Application Load Balancer (Route53 A Record)
+│       ├── Listens on Port 443 (HTTPS)
+│       ├── SSL/TLS Certificate for HTTPS
+│       └── Routes traffic to private instances (Port 80)
+│
+└── Private Subnet (via NAT Gateway)
+    ├── Auto Scaling Group
+    │   ├── Launch Template
+    │   │   ├── AMI: Amazon Linux 2
+    │   │   ├── Instance Type: t2.micro
+    │   │   ├── Security Group
+    │   │   │   ├── Inbound Port 80: Web Traffic from ALB
+    │   │   │   └── Inbound Port 443: SSM Access
+    │   │   ├── IAM Role: EC2SSMRole
+    │   │   └── UserData: Docker + CloudWatch Agent
+    │   │
+    │   └── EC2 Instances (Min: 1, Max: 1)
+    │       └── Docker Container (Port 80)
+    │           └── Web Application: mvp-webserver-with-basic-functions
+    │
+    └── VPC Endpoints
+        ├── SSM Endpoint (Port 443)
+        └── SSM Messages Endpoint (Port 443)
+#+end_example
+
+*** Traffic Flow
+Internet → ALB → EC2 Instances
+
+#+begin_example
+┌─────────┐     ┌────────┐     ┌─────┐     ┌──────────────┐
+│Internet │ →   │Route53 │ →   │ ALB │ →   │    ASG       │
+└─────────┘     └────────┘     └─────┘     │  Instances   │
+    │               │            │          │ ┌──────────┐  │
+    │               ↓            ↓          │ │ Docker   │  │
+    │          DNS Record    Certificate    │ │Container │  │
+    │               │            │          │ │(Port 80) │  │
+    │               │            │          │ │Web App   │  │
+    │               │            │          │ └──────────┘  │
+    │               │            │          └──────────────┘
+    └───────────────┴────────────┘                │
+           DNS → HTTPS (443) + ACM                 │
+                     HTTP (80) → → → → → → → → → →─┘
+                                │
+┌─────────┐     ┌─────┐         │
+│Internet │ ←── │ NAT │ ← · · ·─┤ (Updates/Packages)
+└─────────┘     └─────┘         │
+                                │
+SSM & CloudWatch                 │
+┌─────────┐                     │
+│AWS SSM  │ → → → → → → → → → →─┤
+└─────────┘     HTTPS (443)     │
+                                │
+┌───────────┐                   │
+│CloudWatch │ ← ← ← ← ← ← ← ← ←─┘
+└───────────┘    Agent (Logs & Metrics)
+#+end_example
 
 ** Components
 *** Load Balancer
@@ -18,18 +82,67 @@ This CloudFormation project creates a secure, scalable infrastructure with publi
 - HTTPS listener on port 443
 - SSL/TLS certificate from ACM
 - Health checks configured
+- Routes traffic to private instances (Port 80)
 
 *** Compute
 - Auto Scaling Group in private subnet
 - Launch Template with user data for application deployment
 - SSM Session Manager access configured
 - CloudWatch logging enabled
+- Docker container running web application on port 80
+
+*** Network Ports
+**** 443/TCP (ALB)
+- Purpose: HTTPS web traffic and EC2 instance management
+- Source: 0.0.0.0/0
+- Target: ALB (HTTPS) and SSM endpoints
+- Flow: Internet → ALB (HTTPS:443) → EC2 Instance (HTTP:80)
+- Flow: AWS SSM → VPC Endpoint → EC2 Instance
+
+**** 80/TCP (Internal)
+- Purpose: Web application traffic from ALB
+- Source: ALB Security Group
+- Target: Docker container running mvp-webserver-with-basic-functions
+- Flow: ALB → EC2 Instance → Docker Container (Web App)
 
 *** Security
+**** Network Isolation
+- EC2 instances are placed in private subnets
+- No direct internet access to instances
+- Web traffic must flow through ALB
 - SSL/TLS encryption for HTTPS traffic
-- Private instances with no direct internet access
 - Security groups with minimal required access
 - IAM roles following principle of least privilege
+
+**** Access Control
+- Web traffic (80/TCP) is controlled via ALB
+- Management access (443/TCP) is restricted to SSM
+- Instance security group acts as instance-level firewall
+
+**** Management
+- SSM provides secure instance management without SSH
+- VPC endpoints ensure private SSM communication
+- Auto Scaling Group manages instance lifecycle
+- CloudWatch agent provides monitoring and logging capabilities
+
+**** Monitoring
+- CloudWatch agent installed and configured on instances
+- IAM roles grant necessary CloudWatch permissions
+- Performance metrics and logs collection enabled
+- Docker container logs forwarded to CloudWatch
+
+*** DNS and SSL/TLS
+**** DNS Configuration
+- Route53 A record for application domain
+- Alias record pointing to ALB DNS name
+- Enables domain name access to application
+- Integrated with SSL/TLS certificate for secure access
+
+**** SSL/TLS Configuration
+- HTTPS termination at ALB
+- ACM certificate attached to ALB listener
+- Secure communication between clients and ALB
+- Internal traffic (ALB to instances) over HTTP
 
 * Installation
 ** Prerequisites
@@ -84,3 +197,6 @@ Deploy stacks individually in this order:
 - Include troubleshooting guide
 - Document monitoring and maintenance procedures
 - Add cost estimation guidelines
+
+* See Also
+ec2.yml(5), vpc(7), alb(7), ssm(7), cloudwatch(7), acm(7), route53(7)
