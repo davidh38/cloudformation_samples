@@ -20,7 +20,7 @@ Resources:
   EC2SSMRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: EC2SSMRole
+      RoleName: !Sub ${AWS::Region}-EC2SSMRole
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -32,7 +32,7 @@ Resources:
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
         - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
       Policies:
-        - PolicyName: CloudWatchLogsAccess
+        - PolicyName: !Sub ${AWS::Region}-CloudWatchLogsAccess
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -81,7 +81,7 @@ Resources:
     Properties:
       LaunchTemplateName: !Sub ${AWS::StackName}-launch-template
       LaunchTemplateData:
-        ImageId: ami-0453ec754f44f9a4a
+        ImageId: !Sub '{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64}}'
         InstanceType: !Ref InstanceType
         Monitoring:
           Enabled: true
