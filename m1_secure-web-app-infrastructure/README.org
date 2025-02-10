@@ -87,15 +87,15 @@ Public Traffic (Internet-Facing)
                                                               │
     ┌─────────────┐      ┌─────┐                             │
     │  Internet   │◀─────│ NAT │◀ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─┘
-    └─────────────┘      └─────┘      Updates/Packages
+    └─────────────┘      └─────┘         Updates/Packages
 
-Private Traffic (Internal Only)
-    ┌─────────┐                                              ▲
-    │AWS SSM  │─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ HTTPS:443 ─ ─┤
+Private Traffic (Internal Only)                              │
+    ┌─────────┐                                             │
+    │AWS SSM  │◀ ─ ─ ─ ─ ─ ─ ─ ─ HTTPS:443 ─ ─ ─ ─ ─ ─ ─ ─┤
     └─────────┘                                             │
-                                                           │
-    ┌───────────┐                                          │
-    │CloudWatch │◀ ─ ─ ─ ─ ─ ─ ─ Logs & Metrics ─ ─ ─ ─ ─ ┘
+                                                            │
+    ┌───────────┐                                           │
+    │CloudWatch │◀ ─ ─ ─ ─ ─ ─ ─ Logs & Metrics ─ ─ ─ ─ ─ ─┘
     └───────────┘
 #+end_example
 
