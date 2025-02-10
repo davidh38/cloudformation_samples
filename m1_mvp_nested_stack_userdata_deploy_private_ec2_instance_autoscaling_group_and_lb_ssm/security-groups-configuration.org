@@ -18,11 +18,13 @@ CloudWatch agent installed on EC2 instances with appropriate IAM roles.
 #+begin_example
 VPC (10.0.0.0/16)
 ├── Public Subnet
+│   ├── NAT Gateway
+│   │   └── Enables private instances to access internet
 │   └── Application Load Balancer
 │       ├── Listens on Port 443 (HTTPS)
 │       └── Routes traffic to private instances (Port 80)
 │
-└── Private Subnet
+└── Private Subnet (via NAT Gateway)
     ├── EC2 Instances (Auto Scaling Group)
     │   ├── Security Group
     │   │   ├── Inbound Port 80: Web Traffic from ALB
@@ -44,6 +46,10 @@ Internet → ALB → EC2 Instances
     │             │              │
     └─────────────┘              │
     HTTPS (443) → HTTP (80)      │
+                                │
+┌─────────┐     ┌─────┐         │
+│Internet │ ←── │ NAT │ ← · · ·─┤ (Updates/Packages)
+└─────────┘     └─────┘         │
                                 │
 SSM & CloudWatch                 │
 ┌─────────┐                     │
