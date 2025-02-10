@@ -15,65 +15,85 @@ This CloudFormation project creates a secure, scalable infrastructure with publi
 
 *** Detailed Network Topology
 #+begin_example
-VPC (10.0.0.0/16)
-├── Public Subnet
-│   ├── NAT Gateway
-│   │   └── Enables private instances to access internet
-│   └── Application Load Balancer (Route53 A Record)
-│       ├── Listens on Port 443 (HTTPS)
-│       ├── SSL/TLS Certificate for HTTPS
-│       └── Routes traffic to private instances (Port 80)
-│
-└── Private Subnet (via NAT Gateway)
-    ├── Auto Scaling Group
-    │   ├── Launch Template
-    │   │   ├── AMI: Amazon Linux 2
-    │   │   ├── Instance Type: t2.micro
-    │   │   ├── Security Group
-    │   │   │   ├── Inbound Port 80: Web Traffic from ALB
-    │   │   │   └── Inbound Port 443: SSM Access
-    │   │   ├── IAM Role: EC2SSMRole
-    │   │   └── UserData: Docker + CloudWatch Agent
-    │   │
-    │   └── EC2 Instances (Min: 1, Max: 1)
-    │       └── Docker Container (Port 80)
-    │           └── Web Application: mvp-webserver-with-basic-functions
-    │
-    └── VPC Endpoints
-        ├── SSM Endpoint (Port 443)
-        └── SSM Messages Endpoint (Port 443)
+┌─ VPC (10.0.0.0/16) ──────────────────────────────────────────────────────────┐
+│                                                                               │
+│  ┌─ Public Subnet ─────────────────────────────────────────────────────┐     │
+│  │                                                                      │     │
+│  │  ┌─ NAT Gateway ─────┐    ┌─ Application Load Balancer ─────────┐   │     │
+│  │  │  → Internet access│    │  • Listens on Port 443 (HTTPS)      │   │     │
+│  │  │    for private    │    │  • SSL/TLS Certificate             │   │     │
+│  │  │    instances      │    │  • Routes to private instances     │   │     │
+│  │  └──────────────────┘    └─────────────────────────────────────┘   │     │
+│  │                                                                      │     │
+│  └──────────────────────────────────────────────────────────────────────┘     │
+│                                                                               │
+│  ┌─ Private Subnet ────────────────────────────────────────────────────┐     │
+│  │                                                                      │     │
+│  │  ┌─ Auto Scaling Group ───────────────────────────────────────┐     │     │
+│  │  │                                                            │     │     │
+│  │  │  ┌─ Launch Template ────────────────────────────────┐      │     │     │
+│  │  │  │  • AMI: Amazon Linux 2                          │      │     │     │
+│  │  │  │  • Instance Type: t2.micro                      │      │     │     │
+│  │  │  │  • Security Group:                              │      │     │     │
+│  │  │  │    - Inbound Port 80: Web Traffic from ALB      │      │     │     │
+│  │  │  │    - Inbound Port 443: SSM Access              │      │     │     │
+│  │  │  │  • IAM Role: EC2SSMRole                        │      │     │     │
+│  │  │  │  • UserData: Docker + CloudWatch Agent         │      │     │     │
+│  │  │  └────────────────────────────────────────────────┘      │     │     │
+│  │  │                                                            │     │     │
+│  │  │  ┌─ EC2 Instances (Min: 1, Max: 1) ─────────────────┐     │     │     │
+│  │  │  │  ┌─ Docker Container (Port 80) ─────────────┐    │     │     │     │
+│  │  │  │  │  Web Application:                        │    │     │     │     │
+│  │  │  │  │  mvp-webserver-with-basic-functions     │    │     │     │     │
+│  │  │  │  └─────────────────────────────────────────┘    │     │     │     │
+│  │  │  └──────────────────────────────────────────────────┘     │     │     │
+│  │  └────────────────────────────────────────────────────────────┘     │     │
+│  │                                                                      │     │
+│  │  ┌─ VPC Endpoints ──────────────────────┐                           │     │
+│  │  │  • SSM Endpoint (Port 443)          │                           │     │
+│  │  │  • SSM Messages Endpoint (Port 443)  │                           │     │
+│  │  └──────────────────────────────────────┘                           │     │
+│  └──────────────────────────────────────────────────────────────────────┘     │
+└───────────────────────────────────────────────────────────────────────────────┘
 #+end_example
 
 *** Traffic Flow
 Internet → ALB → EC2 Instances
 
 #+begin_example
-┌─────────┐     ┌────────┐     ┌─────┐     ┌──────────────┐
-│Internet │ →   │Route53 │ →   │ ALB │ →   │    ASG       │
-└─────────┘     └────────┘     └─────┘     │  Instances   │
-    │               │            │          │ ┌──────────┐  │
-    │               ↓            ↓          │ │ Docker   │  │
-    │          DNS Record    Certificate    │ │Container │  │
-    │               │            │          │ │(Port 80) │  │
-    │               │            │          │ │Web App   │  │
-    │               │            │          │ └──────────┘  │
-    │               │            │          └──────────────┘
-    └───────────────┴────────────┘                │
-           DNS → HTTPS (443) + ACM                 │
-                     HTTP (80) → → → → → → → → → →─┘
-                                │
-┌─────────┐     ┌─────┐         │
-│Internet │ ←── │ NAT │ ← · · ·─┤ (Updates/Packages)
-└─────────┘     └─────┘         │
-                                │
-SSM & CloudWatch                 │
-┌─────────┐                     │
-│AWS SSM  │ → → → → → → → → → →─┤
-└─────────┘     HTTPS (443)     │
-                                │
-┌───────────┐                   │
-│CloudWatch │ ← ← ← ← ← ← ← ← ←─┘
-└───────────┘    Agent (Logs & Metrics)
+┌───────────────────────────────────────────────────────────────────────────┐
+│                           Traffic Flow Diagram                             │
+└───────────────────────────────────────────────────────────────────────────┘
+
+    ┌─────────┐      ┌────────┐      ┌─────┐      ┌──────────────────────┐
+    │         │      │        │      │     │      │ Auto Scaling Group    │
+    │Internet │─────▶│Route53 │─────▶│ ALB │─────▶│ ┌──────────────────┐ │
+    │         │      │        │      │     │      │ │  EC2 Instance     │ │
+    └─────────┘      └────────┘      └─────┘      │ │ ┌──────────────┐  │ │
+         ▲               │              │          │ │ │   Docker     │  │ │
+         │               ▼              ▼          │ │ │  Container   │  │ │
+         │          DNS Record     Certificate     │ │ │  (Port 80)   │  │ │
+         │               │              │          │ │ │   Web App    │  │ │
+         │               │              │          │ │ └──────────────┘  │ │
+         │               │              │          │ └──────────────────┘ │
+         │               └──────────────┘          └──────────────────────┘
+         │                      │                           ▲
+         │                      │      HTTPS (443)          │
+         │                      └───────────────────────────┘
+         │                             HTTP (80)
+         │
+    ┌─────────┐      ┌─────┐                 Updates/
+    │Internet │◀─────│ NAT │◀ ─ ─ ─ ─ ─ ─ ─ Packages
+    └─────────┘      └─────┘
+
+    SSM & CloudWatch Communication
+    ┌─────────┐
+    │AWS SSM  │─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─▶
+    └─────────┘            HTTPS (443)
+
+    ┌───────────┐
+    │CloudWatch │◀─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
+    └───────────┘         Logs & Metrics
 #+end_example
 
 ** Components
