@@ -45,6 +45,8 @@ Resources:
       - CertificateStack
     Properties:
       TemplateURL: !Sub https://s3.amazonaws.com/${BucketName}/${AWS::Region}/dns.yml
+      Parameters:
+        ApplicationDomainName: !Ref DomainName
 
 Outputs:
   DomainEndpoint:

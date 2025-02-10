@@ -1,12 +1,17 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: CloudFormation template for creating DNS records
 
+Parameters:
+  ApplicationDomainName:
+    Type: String
+    Description: The domain name for the application
+
 Resources:
   DNSRecord:
     Type: AWS::Route53::RecordSet
     Properties:
       HostedZoneId: !ImportValue ApplicationHostedZoneId
-      Name: !ImportValue ApplicationDomainName
+      Name: !Ref ApplicationDomainName
       Type: A
       AliasTarget:
         DNSName: !ImportValue ALBDNSName
