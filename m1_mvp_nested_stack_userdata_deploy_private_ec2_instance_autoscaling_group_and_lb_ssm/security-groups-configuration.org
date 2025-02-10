@@ -6,7 +6,6 @@
 security_group_ports - EC2 instance security group configuration for web and management access
 
 * SYNOPSIS
-- Port 80/TCP  - Web application HTTP traffic
 - Port 443/TCP - Web application HTTPS traffic and EC2 instance management via AWS Systems Manager (SSM)
 
 * DESCRIPTION
@@ -20,9 +19,8 @@ CloudWatch agent installed on EC2 instances with appropriate IAM roles.
 VPC (10.0.0.0/16)
 ├── Public Subnet
 │   └── Application Load Balancer
-│       ├── Listens on Port 80 (HTTP)
 │       ├── Listens on Port 443 (HTTPS)
-│       └── Routes traffic to private instances
+│       └── Routes traffic to private instances (Port 80)
 │
 └── Private Subnet
     ├── EC2 Instances (Auto Scaling Group)
@@ -45,8 +43,7 @@ Internet → ALB → EC2 Instances
 └─────────┘     └─────┘     └──────────────┘
     │             │              │
     └─────────────┘              │
-    HTTP (80)                    │
-    HTTPS (443)                  │
+    HTTPS (443) → HTTP (80)      │
                                 │
 SSM & CloudWatch                 │
 ┌─────────┐                     │
@@ -59,18 +56,18 @@ SSM & CloudWatch                 │
 #+end_example
 
 * PORTS
-** 80/TCP
-- Purpose: Web application traffic
-- Source: 0.0.0.0/0
-- Target: Docker container running web application
-- Flow: Internet → ALB → EC2 Instance → Docker Container
-
-** 443/TCP
-- Purpose: HTTPS web traffic and EC2 instance management via SSM
+** 443/TCP (ALB)
+- Purpose: HTTPS web traffic and EC2 instance management
 - Source: 0.0.0.0/0
 - Target: ALB (HTTPS) and SSM endpoints
-- Flow: Internet → ALB (HTTPS) → EC2 Instance
+- Flow: Internet → ALB (HTTPS:443) → EC2 Instance (HTTP:80)
 - Flow: AWS SSM → VPC Endpoint → EC2 Instance
+
+** 80/TCP (Internal)
+- Purpose: Web application traffic from ALB
+- Source: ALB Security Group
+- Target: Docker container running web application
+- Flow: ALB → EC2 Instance → Docker Container
 
 * SECURITY CONSIDERATIONS
 ** Network Isolation
