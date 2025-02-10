@@ -2,6 +2,11 @@
 #+AUTHOR: David H
 #+DATE: [2025-02-05]
 
+- add bucket name
+- hosted zone lookup replace the domain name www by loging
+- the policy CloudWatchLogsAccess already exists on the role EC2SSMRole
+- ami: aws ssm get-parameter --name "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64" --region us-east-2 --query "Parameter.Value" --output text
+
 * Overview
 This CloudFormation project creates a secure, scalable infrastructure with public and private networks, featuring an Application Load Balancer and auto-scaling EC2 instances.
 
@@ -32,7 +37,7 @@ This CloudFormation project creates a secure, scalable infrastructure with publi
 │  │  ┌─ Auto Scaling Group ───────────────────────────────────────┐     │     │
 │  │  │                                                            │     │     │
 │  │  │  ┌─ Launch Template ────────────────────────────────┐      │     │     │
-│  │  │  │  • AMI: Amazon Linux 2                          │      │     │     │
+│  │  │  │  • AMI: Amazon Linux 2023 (via SSM Parameter)    │      │     │     │
 │  │  │  │  • Instance Type: t2.micro                      │      │     │     │
 │  │  │  │  • Security Group:                              │      │     │     │
 │  │  │  │    - Inbound Port 80: Web Traffic from ALB      │      │     │     │
@@ -195,7 +200,7 @@ Private Traffic (Internal Only)                              │
 ** Deployment Steps
 1. Upload templates to S3:
    #+BEGIN_SRC bash
-   aws s3 cp . s3://cf-bucket-123434/ --recursive --exclude "*" --include "*.yml" --include "*.yaml"
+   aws s3 cp . s3://cf-bucket-123434/$AWS_REGION/ --recursive --exclude "*" --include "*.yml" --include "*.yaml" --region $AWS_REGION
    #+END_SRC
 
 2. Deploy using master template:
