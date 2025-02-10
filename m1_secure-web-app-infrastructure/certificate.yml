@@ -1,6 +1,11 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: CloudFormation template for creating an SSL/TLS certificate
 
+Parameters:
+  DomainName:
+    Type: String
+    Description: The domain name for the certificate
+
 Resources:
   HostedZoneLookupFunction:
     Type: AWS::Lambda::Function
@@ -87,15 +92,15 @@ Resources:
     Type: Custom::HostedZoneLookup
     Properties:
       ServiceToken: !GetAtt HostedZoneLookupFunction.Arn
-      DomainName: !ImportValue ApplicationDomainName
+      DomainName: !Ref DomainName
 
   Certificate:
     Type: AWS::CertificateManager::Certificate
     Properties:
-      DomainName: !ImportValue ApplicationDomainName
+      DomainName: !Ref DomainName
       ValidationMethod: DNS
       DomainValidationOptions:
-        - DomainName: !ImportValue ApplicationDomainName
+        - DomainName: !Ref DomainName
           HostedZoneId: !GetAtt HostedZoneLookup.HostedZoneId
 
 Outputs:
@@ -104,12 +109,6 @@ Outputs:
     Export:
       Name: CertificateArn
     Value: !Ref Certificate
-    
-  DomainName:
-    Description: Domain name for the application
-    Export:
-      Name: ApplicationDomainName
-    Value: !ImportValue ApplicationDomainName
     
   HostedZoneId:
     Description: Route 53 Hosted Zone ID

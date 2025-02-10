@@ -23,6 +23,8 @@ Resources:
     DependsOn: NetworkStack
     Properties:
       TemplateURL: !Sub https://s3.amazonaws.com/${BucketName}/${AWS::Region}/certificate.yml
+      Parameters:
+        DomainName: !Ref DomainName
 
   LoadBalancerStack:
     Type: AWS::CloudFormation::Stack
