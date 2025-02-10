@@ -46,10 +46,14 @@ Internet → ALB → EC2 Instances
     └─────────────┘              │
     HTTP (80)                    │
                                 │
-SSM Access                       │
+SSM & CloudWatch                 │
 ┌─────────┐                     │
-│AWS SSM  │ → → → → → → → → → →─┘
-└─────────┘     HTTPS (443)
+│AWS SSM  │ → → → → → → → → → →─┤
+└─────────┘     HTTPS (443)     │
+                                │
+┌───────────┐                   │
+│CloudWatch │ ← ← ← ← ← ← ← ← ←─┘
+└───────────┘    Agent (Logs & Metrics)
 #+end_example
 
 * PORTS
