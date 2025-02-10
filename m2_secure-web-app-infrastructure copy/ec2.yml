@@ -1,0 +1,220 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for Auto Scaling Group with Launch Template
+
+Parameters:
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+      - t2.small
+      - t2.medium
+      - t3.micro
+      - t3.small
+      - t3.medium
+    ConstraintDescription: Must be a valid EC2 instance type.
+
+Resources:
+  # IAM Role and Instance Profile
+  EC2SSMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${AWS::Region}-EC2SSMRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+      Policies:
+        - PolicyName: !Sub ${AWS::Region}-CloudWatchLogsAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource: "arn:aws:logs:*:*:*"
+
+  EC2SSMInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref EC2SSMRole
+
+  # CloudWatch Log Group
+  DockerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: my-docker-logs
+      RetentionInDays: 30
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-docker-logs
+
+  # Security Group
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for EC2 instances
+      VpcId: !ImportValue myVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+  # Launch Template
+  EC2LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub ${AWS::StackName}-launch-template
+      LaunchTemplateData:
+        ImageId: !Sub '{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64}}'
+        InstanceType: !Ref InstanceType
+        Monitoring:
+          Enabled: true
+        SecurityGroupIds: 
+          - !Ref InstanceSecurityGroup
+        IamInstanceProfile:
+          Name: !Ref EC2SSMInstanceProfile
+        UserData:
+          Fn::Base64:
+            Fn::Sub: |
+              #!/bin/bash -xe
+              
+              # Redirect all output to CloudWatch Logs
+              exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
+              
+              echo "Starting UserData script execution"
+              
+              # Update system packages
+              echo "Updating system packages..."
+              yum update -y
+              
+              # Install required packages
+              echo "Installing required packages..."
+              yum install -y git docker amazon-cloudwatch-agent
+              
+              # Enable and start Docker service
+              echo "Configuring Docker service..."
+              systemctl enable docker
+              systemctl start docker
+              
+              # Configure Docker logging
+              echo "Configuring Docker logging..."
+              mkdir -p /etc/docker
+              echo '{"log-driver": "awslogs","log-opts": {"awslogs-region": "${AWS::Region}","awslogs-group": "my-docker-logs"}}' > /etc/docker/daemon.json
+              systemctl restart docker
+              
+              # Clone and build application
+              echo "Cloning application repository..."
+              cd /opt || exit 1
+              
+              if ! git clone https://github.com/davidh38/cloudformation_samples.git; then
+                echo "Failed to clone repository"
+                exit 1
+              fi
+              
+              if ! cd cloudformation_samples/mvp-webserver-with-basic-functions; then
+                echo "Failed to change to application directory"
+                exit 1
+              fi
+              
+              echo "Building Docker image..."
+              if ! docker build -t myweb .; then
+                echo "Failed to build Docker image"
+                exit 1
+              fi
+              
+              echo "Starting Docker container..."
+              docker run -d \
+                --restart unless-stopped \
+                -p 80:80 \
+                --log-driver=awslogs \
+                --log-opt awslogs-group=my-docker-logs \
+                --log-opt awslogs-region=${AWS::Region} \
+                myweb
+              
+              echo "UserData script completed successfully"
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: ASG-Instance
+
+  # Auto Scaling Group
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier:
+        - !ImportValue MyPrivateSubnet
+      LaunchTemplate:
+        LaunchTemplateId: !Ref EC2LaunchTemplate
+        Version: !GetAtt EC2LaunchTemplate.LatestVersionNumber
+      MinSize: 1
+      MaxSize: 1
+      DesiredCapacity: 1
+      TargetGroupARNs:
+        - !ImportValue ALBTargetGroupArn
+      HealthCheckType: ELB
+      HealthCheckGracePeriod: 300
+      Tags:
+        - Key: Name
+          Value: ASG-Managed-Instance
+          PropagateAtLaunch: true
+
+  # SSM VPC Endpoints
+  SSMVpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ssm
+      VpcId: !ImportValue myVPC
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !ImportValue MyPrivateSubnet
+      SecurityGroupIds:
+        - !Ref InstanceSecurityGroup
+      PrivateDnsEnabled: true
+
+  SSMMessagesVpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ssmmessages
+      VpcId: !ImportValue myVPC
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !ImportValue MyPrivateSubnet
+      SecurityGroupIds:
+        - !Ref InstanceSecurityGroup
+      PrivateDnsEnabled: true
+
+Outputs:
+  ASGName:
+    Description: Name of the Auto Scaling Group
+    Value: !Ref AutoScalingGroup
+    Export:
+      Name: ASGName
+  
+  LaunchTemplateId:
+    Description: ID of the Launch Template
+    Value: !Ref EC2LaunchTemplate
+    Export:
+      Name: LaunchTemplateId
+
+  SecurityGroup:
+    Description: Security group for the instances
+    Value: !Ref InstanceSecurityGroup
+    Export:
+      Name: SecurityGroup

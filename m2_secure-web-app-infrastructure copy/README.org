@@ -1,0 +1,329 @@
+#+TITLE: AWS CloudFormation MVP Stack
+#+AUTHOR: David H
+#+DATE: [2025-02-05]
+
+* Overview
+This CloudFormation project creates a secure, scalable infrastructure with public and private networks, featuring an Application Load Balancer and auto-scaling EC2 instances. The infrastructure is designed to be region-independent, allowing easy deployment across multiple AWS regions. All parameters and resources are configured to work seamlessly regardless of the target region, making it simple to replicate the entire stack for multi-region deployments or disaster recovery scenarios.
+
+* Architecture
+** Network Layout
+*** Overview
+- Two public subnets for the Application Load Balancer
+- One private subnet for EC2 instances
+- NAT Gateway in public subnet for outbound internet access
+- VPC with proper routing and security configurations
+
+*** Detailed Network Topology
+#+begin_example
+┌─ VPC (10.0.0.0/16) ──────────────────────────────────────────────────────────┐
+│                                                                               │
+│  ┌─ Public Subnet ─────────────────────────────────────────────────────┐     │
+│  │                                                                      │     │
+│  │  ┌─ NAT Gateway ─────┐    ┌─ Application Load Balancer ─────────┐   │     │
+│  │  │  → Internet access│    │  • Listens on Port 443 (HTTPS)      │   │     │
+│  │  │    for private    │    │  • SSL/TLS Certificate             │   │     │
+│  │  │    instances      │    │  • Routes to private instances     │   │     │
+│  │  └──────────────────┘    └─────────────────────────────────────┘   │     │
+│  │                                                                      │     │
+│  └──────────────────────────────────────────────────────────────────────┘     │
+│                                                                               │
+│  ┌─ Private Subnet ────────────────────────────────────────────────────┐     │
+│  │                                                                      │     │
+│  │  ┌─ Auto Scaling Group ───────────────────────────────────────┐     │     │
+│  │  │                                                            │     │     │
+│  │  │  ┌─ Launch Template ────────────────────────────────┐      │     │     │
+│  │  │  │  • AMI: Amazon Linux 2                          │      │     │     │
+│  │  │  │  • Instance Type: t2.micro                      │      │     │     │
+│  │  │  │  • Security Group:                              │      │     │     │
+│  │  │  │    - Inbound Port 80: Web Traffic from ALB      │      │     │     │
+│  │  │  │    - Inbound Port 443: SSM Access              │      │     │     │
+│  │  │  │  • IAM Role: EC2SSMRole                        │      │     │     │
+│  │  │  │  • UserData: Docker + CloudWatch Agent         │      │     │     │
+│  │  │  └────────────────────────────────────────────────┘      │     │     │
+│  │  │                                                            │     │     │
+│  │  │  ┌─ EC2 Instances (Min: 1, Max: 1) ─────────────────┐     │     │     │
+│  │  │  │  ┌─ Docker Container (Port 80) ─────────────┐    │     │     │     │
+│  │  │  │  │  Web Application:                        │    │     │     │     │
+│  │  │  │  │  mvp-webserver-with-basic-functions     │    │     │     │     │
+│  │  │  │  └─────────────────────────────────────────┘    │     │     │     │
+│  │  │  └──────────────────────────────────────────────────┘     │     │     │
+│  │  └────────────────────────────────────────────────────────────┘     │     │
+│  │                                                                      │     │
+│  │  ┌─ VPC Endpoints ──────────────────────┐                           │     │
+│  │  │  • SSM Endpoint (Port 443)          │                           │     │
+│  │  │  • SSM Messages Endpoint (Port 443)  │                           │     │
+│  │  └──────────────────────────────────────┘                           │     │
+│  └──────────────────────────────────────────────────────────────────────┘     │
+└───────────────────────────────────────────────────────────────────────────────┘
+#+end_example
+
+*** Traffic Flow
+Internet → ALB → EC2 Instances
+
+#+begin_example
+┌───────────────────────────────────────────────────────────────────────────┐
+│                           Traffic Flow Diagram                             │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Public Traffic (Internet-Facing)
+    ┌─────────┐      ┌────────┐      ┌─────────────────┐
+    │         │      │        │      │     ALB         │
+    │Internet │─────▶│Route53 │─────▶│ [HTTPS:443 ✓]   │────────┐
+    │         │      │        │      │ [HTTP:80  ✗]    │        │
+    └─────────┘      └────────┘      └─────────────────┘        │
+                                                                ▼
+                                                     ┌──────────────────────┐
+                                                     │ Auto Scaling Group   │
+                                                     │ ┌────────────────┐   │
+                                                     │ │  EC2 Instance  │   │
+                                                     │ │ ┌──────────┐   │   │
+                                                     │ │ │ Docker   │   │   │
+                                                     │ │ │Container │   │   │
+                                                     │ │ │HTTP:80   │   │   │
+                                                     │ │ └──────────┘   │   │
+                                                     │ └────────────────┘   │
+                                                     └──────────────────────┘
+                                                              │
+                                                              │
+    ┌─────────────┐      ┌─────┐                             │
+    │  Internet   │◀─────│ NAT │◀ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─┘
+    └─────────────┘      └─────┘         Updates/Packages
+
+Private Traffic (Internal Only)                              │
+    ┌─────────┐                                             │
+    │AWS SSM  │◀ ─ ─ ─ ─ ─ ─ ─ ─ HTTPS:443 ─ ─ ─ ─ ─ ─ ─ ─┤
+    └─────────┘                                             │
+                                                            │
+    ┌───────────┐                                           │
+    │CloudWatch │◀ ─ ─ ─ ─ ─ ─ ─ Logs & Metrics ─ ─ ─ ─ ─ ─┘
+    └───────────┘
+#+end_example
+
+** Components
+*** Load Balancer
+- Internet-facing Application Load Balancer
+- HTTPS listener on port 443
+- SSL/TLS certificate from ACM
+- Health checks configured
+- Routes traffic to private instances (Port 80)
+
+#+begin_example
+┌─────────────────────────── ALB Port Configuration ───────────────────────────┐
+│                                                                             │
+│  Internet                   Load Balancer                  Target Group      │
+│     │                            │                             │            │
+│     │        ┌──────────────────┐│                            │            │
+│     │        │Security Group:   ││                            │            │
+│     │───────▶│ONLY Port 443    ││                            │            │
+│     │        │from 0.0.0.0/0   ││                            │            │
+│     │        │(Port 80 CLOSED) ││                            │            │
+│     │        └──────────────────┘│                            │            │
+│     │                            │                            │            │
+│     │                            │    Internal Forward        │            │
+│     └───────▶ HTTPS:443 ─────────────────▶ HTTP:80 ─────────▶            │
+│              (SSL Termination)   │     (Private Traffic)      │            │
+│                                 │                             │            │
+└─────────────────────────────────────────────────────────────────────────────┘
+#+end_example
+
+*** Compute
+- Auto Scaling Group in private subnet
+- Launch Template with user data for application deployment
+- SSM Session Manager access configured
+- CloudWatch logging enabled
+- Docker container running web application on port 80
+
+*** Network Ports
+**** 443/TCP (ALB)
+- Purpose: HTTPS web traffic and EC2 instance management
+- Source: 0.0.0.0/0
+- Target: ALB (HTTPS) and SSM endpoints
+- Flow: Internet → ALB (HTTPS:443) → EC2 Instance (HTTP:80)
+- Flow: AWS SSM → VPC Endpoint → EC2 Instance
+
+**** 80/TCP (Internal)
+- Purpose: Web application traffic from ALB
+- Source: ALB Security Group
+- Target: Docker container running mvp-webserver-with-basic-functions
+- Flow: ALB → EC2 Instance → Docker Container (Web App)
+
+*** Security
+**** Network Isolation
+- EC2 instances are placed in private subnets
+- No direct internet access to instances
+- Web traffic must flow through ALB
+- SSL/TLS encryption for HTTPS traffic
+- Security groups with minimal required access
+- IAM roles following principle of least privilege
+
+**** Access Control
+- Web traffic (80/TCP) is controlled via ALB
+- Management access (443/TCP) is restricted to SSM
+- Instance security group acts as instance-level firewall
+
+**** Management
+- SSM provides secure instance management without SSH
+- VPC endpoints ensure private SSM communication
+- Auto Scaling Group manages instance lifecycle
+- CloudWatch agent provides monitoring and logging capabilities
+
+**** Monitoring
+- CloudWatch agent installed and configured on instances
+- IAM roles grant necessary CloudWatch permissions
+- Performance metrics and logs collection enabled
+- Docker container logs forwarded to CloudWatch
+
+*** DNS and SSL/TLS
+**** DNS Configuration
+- Route53 A record for application domain
+- Alias record pointing to ALB DNS name
+- Enables domain name access to application
+- Integrated with SSL/TLS certificate for secure access
+
+**** SSL/TLS Configuration
+- HTTPS termination at ALB
+- ACM certificate attached to ALB listener
+- Secure communication between clients and ALB
+- Internal traffic (ALB to instances) over HTTP
+
+* Installation
+** Prerequisites
+- AWS CLI configured with appropriate credentials
+- S3 bucket for template storage
+- Route 53 hosted zone for your domain
+
+** Deployment Steps
+1. Upload templates to S3:
+   #+BEGIN_SRC bash
+   # Upload templates to desired regions
+   # For us-east-1:
+   aws s3 cp . s3://cf-bucket-123434/us-east-1/ \
+     --recursive \
+     --exclude "*" \
+     --include "*.yml" \
+     --region us-east-1
+
+   # For us-east-2:
+   aws s3 cp . s3://cf-bucket-123434/us-east-2/ \
+     --recursive \
+     --exclude "*" \
+     --include "*.yml" \
+     --region us-east-2
+
+   # For any other region:
+   aws s3 cp . s3://cf-bucket-123434/[region-name]/ \
+     --recursive \
+     --exclude "*" \
+     --include "*.yml" \
+     --region [region-name]
+   #+END_SRC
+
+   The templates are designed to be region-agnostic. Key features that enable multi-region deployment:
+   - Region-aware parameter defaults
+   - Dynamic AMI selection using SSM parameters
+   - Region-specific resource naming
+   - Automatic AZ selection for network resources
+   - Region-independent IAM roles and policies
+
+2. Deploy using master template:
+   - Use AWS Console or CLI to create stack with =master.yml=
+   - Stack will automatically create all nested stacks in the correct order:
+     1. Network infrastructure
+     2. SSL/TLS certificate
+     3. Load balancer
+     4. EC2 instances
+     5. DNS configuration
+
+** Alternative Manual Deployment
+Deploy stacks individually in this order:
+1. =network.yml= - Base network infrastructure
+2. =certificate.yml= - SSL/TLS certificate
+3. =loadbalancer.yml= - Application Load Balancer
+4. =ec2.yml= - Auto Scaling Group and instances
+5. =dns.yml= - Route 53 DNS configuration
+
+* Cost Analysis
+** Monthly Cost Estimation
+*** Compute (EC2)
+- t2.micro instance (1 instance)
+  - On-demand: ~$8.50/month
+  - Reserved 1-year: ~$5.10/month (40% savings)
+  - Reserved 3-year: ~$3.40/month (60% savings)
+- Auto Scaling Group: No additional cost
+
+*** Network
+- Application Load Balancer
+  - Base cost: ~$18.00/month
+  - Data processing: ~$0.008/GB
+- NAT Gateway
+  - Hourly: ~$32.40/month
+  - Data processing: ~$0.045/GB
+- Route 53
+  - Hosted zone: $0.50/month
+  - Queries: $0.40/million queries
+
+*** Storage and Monitoring
+- CloudWatch
+  - Basic monitoring: Free
+  - Detailed monitoring: ~$2.10/instance/month
+  - Log storage: ~$0.50/GB/month
+- Systems Manager
+  - Session Manager: No additional cost
+  - Parameter Store (standard): Free
+
+** Cost Factors
+- Instance running hours
+- Data transfer (both internet and inter-AZ)
+- Number of requests through ALB
+- CloudWatch log volume
+- Route 53 query volume
+
+** Cost Optimization
+*** Short-term
+- Use Reserved Instances for predictable workloads
+- Monitor and adjust instance size based on utilization
+- Enable detailed monitoring only when needed
+- Set up CloudWatch alarms for unusual cost patterns
+
+*** Long-term
+- Evaluate Savings Plans for compute commitment
+- Consider Spot Instances for non-critical workloads
+- Implement automated instance scheduling
+- Regular review of resource utilization
+
+** Monthly Total (Estimated)
+- Minimum setup (On-demand): ~$60-70/month
+- With reserved instances: ~$55-65/month
+- Additional costs vary based on:
+  - Data transfer volume
+  - Request volume
+  - Log storage needs
+  - Monitoring requirements
+
+* Future Improvements
+** Infrastructure
+- Implement cross-zone load balancing
+- Add backup and snapshot strategies
+- Configure enhanced monitoring and alerting
+- Implement cost optimization features
+
+** Security
+- Implement WAF for enhanced security
+- Add GuardDuty for threat detection
+- Configure AWS Config rules
+- Implement Systems Manager patch management
+
+** Automation
+- Add CI/CD pipeline for deployments
+- Implement automated testing
+- Add drift detection
+- Create automated backup procedures
+
+** Documentation
+- Add detailed architecture diagrams
+- Include troubleshooting guide
+- Document monitoring and maintenance procedures
+- Add cost estimation guidelines
+
+* See Also
+ec2.yml(5), vpc(7), alb(7), ssm(7), cloudwatch(7), acm(7), route53(7)
