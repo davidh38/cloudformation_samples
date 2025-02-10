@@ -104,6 +104,25 @@ Internet → ALB → EC2 Instances
 - Health checks configured
 - Routes traffic to private instances (Port 80)
 
+#+begin_example
+┌─────────────────────────── ALB Port Configuration ───────────────────────────┐
+│                                                                             │
+│  Internet                   Load Balancer                  Target Group      │
+│     │                            │                             │            │
+│     │        ┌──────────────────┐│                            │            │
+│     │        │Security Group:   ││                            │            │
+│     │───────▶│ONLY Port 443    ││                            │            │
+│     │        │from 0.0.0.0/0   ││                            │            │
+│     │        │(Port 80 CLOSED) ││                            │            │
+│     │        └──────────────────┘│                            │            │
+│     │                            │                            │            │
+│     │                            │    Internal Forward        │            │
+│     └───────▶ HTTPS:443 ─────────────────▶ HTTP:80 ─────────▶            │
+│              (SSL Termination)   │     (Private Traffic)      │            │
+│                                 │                             │            │
+└─────────────────────────────────────────────────────────────────────────────┘
+#+end_example
+
 *** Compute
 - Auto Scaling Group in private subnet
 - Launch Template with user data for application deployment
