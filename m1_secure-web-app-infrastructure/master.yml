@@ -64,5 +64,3 @@ Outputs:
   DomainName:
     Description: Domain name for the application
     Value: !Ref DomainName
-    Export:
-      Name: ApplicationDomainName
