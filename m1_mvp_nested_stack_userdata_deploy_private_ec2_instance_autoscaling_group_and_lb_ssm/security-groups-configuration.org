@@ -12,8 +12,8 @@ security_group_ports - EC2 instance security group configuration for web and man
 * DESCRIPTION
 The security group configuration manages access to EC2 instances running in a private subnet,
 controlling both web traffic and instance management access. The configuration is implemented
-through AWS CloudFormation in the ec2.yml template. CloudWatch monitoring is enabled through
-VPC endpoints, requiring no additional security group rules.
+through AWS CloudFormation in the ec2.yml template. CloudWatch monitoring is enabled via the
+CloudWatch agent installed on EC2 instances with appropriate IAM roles.
 
 * NETWORK TOPOLOGY
 #+begin_example
@@ -32,8 +32,7 @@ VPC (10.0.0.0/16)
     │
     └── VPC Endpoints
         ├── SSM Endpoint (Port 443)
-        ├── SSM Messages Endpoint (Port 443)
-        └── CloudWatch Endpoint (HTTPS)
+        └── SSM Messages Endpoint (Port 443)
 #+end_example
 
 * TRAFFIC FLOW
@@ -79,9 +78,15 @@ SSM Access                       │
 
 ** Management
 - SSM provides secure instance management without SSH
-- VPC endpoints ensure private SSM and CloudWatch communication
+- VPC endpoints ensure private SSM communication
 - Auto Scaling Group manages instance lifecycle
-- CloudWatch monitoring through VPC endpoint (no additional security group rules needed)
+- CloudWatch agent provides monitoring and logging capabilities
+
+** Monitoring
+- CloudWatch agent installed and configured on instances
+- IAM roles grant necessary CloudWatch permissions
+- Performance metrics and logs collection enabled
+- Docker container logs forwarded to CloudWatch
 
 * SEE ALSO
 ec2.yml(5), vpc(7), alb(7), ssm(7), cloudwatch(7)
