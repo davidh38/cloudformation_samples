@@ -1,0 +1,47 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Master template for nested stacks with all resources
+
+Resources:
+  NetworkStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.amazonaws.com/cf-bucket-123434/network.yml
+
+  CertificateStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: NetworkStack
+    Properties:
+      TemplateURL: https://s3.amazonaws.com/cf-bucket-123434/certificate.yml
+
+  LoadBalancerStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: CertificateStack
+    Properties:
+      TemplateURL: https://s3.amazonaws.com/cf-bucket-123434/loadbalancer.yml
+
+  ApplicationStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: LoadBalancerStack
+    Properties:
+      TemplateURL: https://s3.amazonaws.com/cf-bucket-123434/ec2.yml
+
+  DNSStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: 
+      - LoadBalancerStack
+      - CertificateStack
+    Properties:
+      TemplateURL: https://s3.amazonaws.com/cf-bucket-123434/dns.yml
+
+Outputs:
+  DomainEndpoint:
+    Description: Domain endpoint for the application
+    Value: !GetAtt DNSStack.Outputs.DomainEndpoint
+  
+  LoadBalancerDNS:
+    Description: DNS name of the Application Load Balancer
+    Value: !GetAtt LoadBalancerStack.Outputs.LoadBalancerDNS
+  
+  CertificateArn:
+    Description: ARN of the SSL/TLS certificate
+    Value: !GetAtt CertificateStack.Outputs.CertificateArn

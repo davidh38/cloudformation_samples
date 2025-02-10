@@ -1,0 +1,18 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for creating DNS records
+
+Resources:
+  DNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !ImportValue ApplicationHostedZoneId
+      Name: !ImportValue ApplicationDomainName
+      Type: A
+      AliasTarget:
+        DNSName: !ImportValue ALBDNSName
+        HostedZoneId: !ImportValue ALBCanonicalHostedZoneID
+
+Outputs:
+  DomainEndpoint:
+    Description: Domain endpoint for the application
+    Value: !Ref DNSRecord
