@@ -5,7 +5,7 @@ Parameters:
   DomainName:
     Type: String
     Description: The domain name for the application
-    Default: login.mymvp.me
+    Default: www.mymvp.me
 
   BucketName:
     Type: String
@@ -57,7 +57,7 @@ Outputs:
     Description: ARN of the SSL/TLS certificate
     Value: !GetAtt CertificateStack.Outputs.CertificateArn
     
-  ApplicationDomain:
+  DomainName:
     Description: Domain name for the application
     Value: !Ref DomainName
     Export:
