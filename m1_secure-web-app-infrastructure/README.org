@@ -195,8 +195,15 @@ Private Traffic (Internal Only)                              │
 ** Deployment Steps
 1. Upload templates to S3:
    #+BEGIN_SRC bash
-   aws s3 cp . s3://cf-bucket-123434/ --recursive --exclude "*" --include "*.yml" --include "*.yaml"
+   # Upload templates to us-east-1 region folder
+   aws s3 cp . s3://cf-bucket-123434/us-east-1/ \
+     --recursive \
+     --exclude "*" \
+     --include "*.yml" \
+     --include "*.yaml"
    #+END_SRC
+
+   Note: This example uploads templates to the us-east-1 region folder. For other regions, replace =us-east-1= with your target region.
 
 2. Deploy using master template:
    - Use AWS Console or CLI to create stack with =master.yml=
