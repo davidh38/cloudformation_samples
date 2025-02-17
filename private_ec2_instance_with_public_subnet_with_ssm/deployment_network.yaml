@@ -1,3 +1,0 @@
-template-file-path: ./private_ec2_instance_with_public_subnet/network.yml
-parameters: 
-tags:
